@@ -1,0 +1,338 @@
+import 'dart:convert';
+import 'dart:io';
+
+import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
+import 'package:video_player/video_player.dart';
+import 'package:file_picker/file_picker.dart';
+import 'package:flutter_pdfview/flutter_pdfview.dart';
+import 'package:path_provider/path_provider.dart';
+
+
+void main() {
+  runApp(const MedicalLearningApp());
+}
+
+class MedicalLearningApp extends StatelessWidget {
+  const MedicalLearningApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      debugShowCheckedModeBanner: false,
+      title: 'Medical Learning',
+      theme: ThemeData(
+        primarySwatch: Colors.indigo,
+        scaffoldBackgroundColor: Colors.grey.shade100,
+      ),
+      home: const MainNav(),
+    );
+  }
+}
+
+
+class MainNav extends StatefulWidget {
+  const MainNav({super.key});
+
+  @override
+  State<MainNav> createState() => _MainNavState();
+}
+
+class _MainNavState extends State<MainNav> {
+  int index = 0;
+
+  final screens = const [
+    HomeScreen(),
+    UserScreen(),
+    AdminScreen(),
+  ];
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: screens[index],
+      bottomNavigationBar: BottomNavigationBar(
+        currentIndex: index,
+        onTap: (i) => setState(() => index = i),
+        selectedItemColor: Colors.indigo,
+        items: const [
+          BottomNavigationBarItem(icon: Icon(Icons.dashboard), label: "Home"),
+          BottomNavigationBarItem(icon: Icon(Icons.play_circle), label: "User"),
+          BottomNavigationBarItem(icon: Icon(Icons.admin_panel_settings), label: "Admin"),
+        ],
+      ),
+    );
+  }
+}
+
+
+class HomeScreen extends StatelessWidget {
+  const HomeScreen({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text("Medical Learning Platform")),
+      body: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: const [
+            Text("Learn Medical Concepts",
+                style: TextStyle(fontSize: 26, fontWeight: FontWeight.bold)),
+            SizedBox(height: 10),
+            Text(
+              "• Admin uploads videos & PDFs\n"
+              "• Files stored securely on AWS\n"
+              "• Users stream videos & view PDFs online\n"
+              "• Subscription layer can be added next",
+              style: TextStyle(fontSize: 16),
+            ),
+            SizedBox(height: 20),
+            Card(
+              elevation: 3,
+              child: ListTile(
+                leading: Icon(Icons.security, color: Colors.indigo),
+                title: Text("Secure Cloud Streaming"),
+                subtitle: Text("Udemy / Coursera level architecture"),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+
+class UserScreen extends StatefulWidget {
+  const UserScreen({super.key});
+
+  @override
+  State<UserScreen> createState() => _UserScreenState();
+}
+
+class _UserScreenState extends State<UserScreen> {
+  final String apiUrl = "http://13.203.219.206:8000/infumedz/user/contents/";
+  late Future<List<dynamic>> contentFuture;
+
+  @override
+  void initState() {
+    contentFuture = fetchContents();
+    super.initState();
+  }
+
+  Future<List<dynamic>> fetchContents() async {
+    final res = await http.get(Uri.parse(apiUrl));
+    return json.decode(res.body);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text("My Learning")),
+      body: FutureBuilder(
+        future: contentFuture,
+        builder: (context, snap) {
+          if (!snap.hasData) return const Center(child: CircularProgressIndicator());
+
+          final list = snap.data as List;
+          return ListView.builder(
+            itemCount: list.length,
+            itemBuilder: (c, i) {
+              final item = list[i];
+              return Card(
+                margin: const EdgeInsets.all(12),
+                child: ListTile(
+                  title: Text(item["title"]),
+                  subtitle: Text(item["description"]),
+                  trailing: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      if (item["video_url"] != null)
+                        IconButton(
+                          icon: const Icon(Icons.play_circle, color: Colors.indigo),
+                          onPressed: () => Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => VideoPlayerScreen(item["video_url"]),
+                            ),
+                          ),
+                        ),
+                      if (item["pdf_url"] != null)
+                        IconButton(
+                          icon: const Icon(Icons.picture_as_pdf, color: Colors.red),
+                          onPressed: () => Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => PdfScreen(item["pdf_url"]),
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+              );
+            },
+          );
+        },
+      ),
+    );
+  }
+}
+
+
+class VideoPlayerScreen extends StatefulWidget {
+  final String url;
+  const VideoPlayerScreen(this.url, {super.key});
+
+  @override
+  State<VideoPlayerScreen> createState() => _VideoPlayerScreenState();
+}
+
+class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
+  late VideoPlayerController controller;
+
+  @override
+  void initState() {
+    controller = VideoPlayerController.networkUrl(Uri.parse(widget.url))
+      ..initialize().then((_) => setState(() {}));
+    super.initState();
+  }
+
+  @override
+  void dispose() {
+    controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(),
+      body: controller.value.isInitialized
+          ? Column(
+              children: [
+                AspectRatio(
+                  aspectRatio: controller.value.aspectRatio,
+                  child: VideoPlayer(controller),
+                ),
+                IconButton(
+                  icon: Icon(
+                      controller.value.isPlaying ? Icons.pause : Icons.play_arrow),
+                  onPressed: () => setState(() {
+                    controller.value.isPlaying
+                        ? controller.pause()
+                        : controller.play();
+                  }),
+                ),
+              ],
+            )
+          : const Center(child: CircularProgressIndicator()),
+    );
+  }
+}
+
+
+class PdfScreen extends StatefulWidget {
+  final String url;
+  const PdfScreen(this.url, {super.key});
+
+  @override
+  State<PdfScreen> createState() => _PdfScreenState();
+}
+
+class _PdfScreenState extends State<PdfScreen> {
+  String? localPath;
+
+  @override
+  void initState() {
+    super.initState();
+    downloadPdf();
+  }
+
+  Future<void> downloadPdf() async {
+    final res = await http.get(Uri.parse(widget.url));
+    final dir = await getTemporaryDirectory();
+    final file = File("${dir.path}/temp.pdf");
+    await file.writeAsBytes(res.bodyBytes);
+    setState(() => localPath = file.path);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(),
+      body: localPath == null
+          ? const Center(child: CircularProgressIndicator())
+          : PDFView(
+              filePath: localPath!,
+            ),
+    );
+  }
+}
+
+
+class AdminScreen extends StatefulWidget {
+  const AdminScreen({super.key});
+
+  @override
+  State<AdminScreen> createState() => _AdminScreenState();
+}
+
+class _AdminScreenState extends State<AdminScreen> {
+  File? video;
+  File? pdf;
+
+  final String uploadUrl = "http://13.203.219.206:8000/infumedz/upload/";
+
+  Future<void> pickFile(bool isVideo) async {
+    final res = await FilePicker.pickFiles(
+      type: isVideo ? FileType.video : FileType.custom,
+      allowedExtensions: isVideo ? null : ["pdf"],
+    );
+    if (res != null) {
+      setState(() {
+        isVideo ? video = File(res.files.single.path!) : pdf = File(res.files.single.path!);
+      });
+    }
+  }
+
+  Future<void> upload() async {
+    final req = http.MultipartRequest("POST", Uri.parse(uploadUrl));
+    req.fields["title"] = "Human Anatomy Basics";
+    req.fields["description"] = "Medical content upload";
+    req.fields["content_type"] = "BOTH";
+
+    if (video != null) req.files.add(await http.MultipartFile.fromPath("video", video!.path));
+    if (pdf != null) req.files.add(await http.MultipartFile.fromPath("pdf", pdf!.path));
+
+    await req.send();
+    ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Uploaded Successfully")));
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text("Admin Upload")),
+      body: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          children: [
+            ElevatedButton(
+                onPressed: () => pickFile(true),
+                child: const Text("Select Video")),
+            ElevatedButton(
+                onPressed: () => pickFile(false),
+                child: const Text("Select PDF")),
+            const SizedBox(height: 20),
+            ElevatedButton(
+                onPressed: upload,
+                child: const Text("Upload to Backend")),
+          ],
+        ),
+      ),
+    );
+  }
+}
