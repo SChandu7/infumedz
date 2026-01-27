@@ -8,6 +8,7 @@ import 'package:flutter_pdfview/flutter_pdfview.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:flutter_file_dialog/flutter_file_dialog.dart';
+import 'package:dio/dio.dart';
 
 void main() {
   runApp(const MedicalLearningApp());
@@ -171,7 +172,10 @@ class _UserScreenState extends State<UserScreen> {
                           onPressed: () => Navigator.push(
                             context,
                             MaterialPageRoute(
-                              builder: (_) => PdfScreen(item["pdf_url"]),
+                              builder: (_) => PdfScreen(
+                                pdfUrl: item["pdf_url"],
+                                title: item["title"],
+                              ),
                             ),
                           ),
                         ),
@@ -240,37 +244,82 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
 }
 
 class PdfScreen extends StatefulWidget {
-  final String url;
-  const PdfScreen(this.url, {super.key});
+  final String pdfUrl; // ✅ INTERNET URL
+  final String title;
+
+  const PdfScreen({super.key, required this.pdfUrl, required this.title});
 
   @override
   State<PdfScreen> createState() => _PdfScreenState();
 }
 
 class _PdfScreenState extends State<PdfScreen> {
+  bool isReady = false;
   String? localPath;
+  int totalPages = 0;
+  int currentPage = 0;
 
   @override
   void initState() {
     super.initState();
-    downloadPdf();
+    _preparePdf();
   }
 
-  Future<void> downloadPdf() async {
-    final res = await http.get(Uri.parse(widget.url));
+  // ================= DOWNLOAD FROM URL =================
+  Future<void> _preparePdf() async {
     final dir = await getTemporaryDirectory();
-    final file = File("${dir.path}/temp.pdf");
-    await file.writeAsBytes(res.bodyBytes);
-    setState(() => localPath = file.path);
+    final file = File("${dir.path}/${widget.title}.pdf");
+
+    if (!await file.exists()) {
+      await Dio().download(widget.pdfUrl, file.path);
+    }
+
+    setState(() {
+      localPath = file.path;
+    });
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(),
+      appBar: AppBar(
+        title: Text(widget.title),
+        actions: [
+          Center(
+            child: Padding(
+              padding: const EdgeInsets.only(right: 12),
+              child: Text(
+                "${currentPage + 1}/$totalPages",
+                style: const TextStyle(fontSize: 14),
+              ),
+            ),
+          ),
+        ],
+      ),
       body: localPath == null
           ? const Center(child: CircularProgressIndicator())
-          : PDFView(filePath: localPath!),
+          : Stack(
+              children: [
+                PDFView(
+                  filePath: localPath!,
+                  enableSwipe: true,
+                  swipeHorizontal: false,
+                  autoSpacing: false,
+                  pageSnap: false,
+                  nightMode: false,
+                  onRender: (pages) {
+                    setState(() {
+                      totalPages = pages ?? 0;
+                      isReady = true;
+                    });
+                  },
+                  onPageChanged: (page, _) {
+                    setState(() => currentPage = page ?? 0);
+                  },
+                ),
+                if (!isReady) const Center(child: CircularProgressIndicator()),
+              ],
+            ),
     );
   }
 }
