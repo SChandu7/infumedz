@@ -4,10 +4,10 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:video_player/video_player.dart';
-import 'package:file_picker/file_picker.dart';
 import 'package:flutter_pdfview/flutter_pdfview.dart';
 import 'package:path_provider/path_provider.dart';
-
+import 'package:image_picker/image_picker.dart';
+import 'package:flutter_file_dialog/flutter_file_dialog.dart';
 
 void main() {
   runApp(const MedicalLearningApp());
@@ -30,7 +30,6 @@ class MedicalLearningApp extends StatelessWidget {
   }
 }
 
-
 class MainNav extends StatefulWidget {
   const MainNav({super.key});
 
@@ -41,11 +40,7 @@ class MainNav extends StatefulWidget {
 class _MainNavState extends State<MainNav> {
   int index = 0;
 
-  final screens = const [
-    HomeScreen(),
-    UserScreen(),
-    AdminScreen(),
-  ];
+  final screens = const [HomeScreen(), UserScreen(), AdminScreen()];
 
   @override
   Widget build(BuildContext context) {
@@ -58,13 +53,15 @@ class _MainNavState extends State<MainNav> {
         items: const [
           BottomNavigationBarItem(icon: Icon(Icons.dashboard), label: "Home"),
           BottomNavigationBarItem(icon: Icon(Icons.play_circle), label: "User"),
-          BottomNavigationBarItem(icon: Icon(Icons.admin_panel_settings), label: "Admin"),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.admin_panel_settings),
+            label: "Admin",
+          ),
         ],
       ),
     );
   }
 }
-
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
@@ -78,8 +75,10 @@ class HomeScreen extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: const [
-            Text("Learn Medical Concepts",
-                style: TextStyle(fontSize: 26, fontWeight: FontWeight.bold)),
+            Text(
+              "Learn Medical Concepts",
+              style: TextStyle(fontSize: 26, fontWeight: FontWeight.bold),
+            ),
             SizedBox(height: 10),
             Text(
               "• Admin uploads videos & PDFs\n"
@@ -103,7 +102,6 @@ class HomeScreen extends StatelessWidget {
     );
   }
 }
-
 
 class UserScreen extends StatefulWidget {
   const UserScreen({super.key});
@@ -134,7 +132,8 @@ class _UserScreenState extends State<UserScreen> {
       body: FutureBuilder(
         future: contentFuture,
         builder: (context, snap) {
-          if (!snap.hasData) return const Center(child: CircularProgressIndicator());
+          if (!snap.hasData)
+            return const Center(child: CircularProgressIndicator());
 
           final list = snap.data as List;
           return ListView.builder(
@@ -151,17 +150,24 @@ class _UserScreenState extends State<UserScreen> {
                     children: [
                       if (item["video_url"] != null)
                         IconButton(
-                          icon: const Icon(Icons.play_circle, color: Colors.indigo),
+                          icon: const Icon(
+                            Icons.play_circle,
+                            color: Colors.indigo,
+                          ),
                           onPressed: () => Navigator.push(
                             context,
                             MaterialPageRoute(
-                              builder: (_) => VideoPlayerScreen(item["video_url"]),
+                              builder: (_) =>
+                                  VideoPlayerScreen(item["video_url"]),
                             ),
                           ),
                         ),
                       if (item["pdf_url"] != null)
                         IconButton(
-                          icon: const Icon(Icons.picture_as_pdf, color: Colors.red),
+                          icon: const Icon(
+                            Icons.picture_as_pdf,
+                            color: Colors.red,
+                          ),
                           onPressed: () => Navigator.push(
                             context,
                             MaterialPageRoute(
@@ -180,7 +186,6 @@ class _UserScreenState extends State<UserScreen> {
     );
   }
 }
-
 
 class VideoPlayerScreen extends StatefulWidget {
   final String url;
@@ -219,7 +224,8 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
                 ),
                 IconButton(
                   icon: Icon(
-                      controller.value.isPlaying ? Icons.pause : Icons.play_arrow),
+                    controller.value.isPlaying ? Icons.pause : Icons.play_arrow,
+                  ),
                   onPressed: () => setState(() {
                     controller.value.isPlaying
                         ? controller.pause()
@@ -232,7 +238,6 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
     );
   }
 }
-
 
 class PdfScreen extends StatefulWidget {
   final String url;
@@ -265,13 +270,10 @@ class _PdfScreenState extends State<PdfScreen> {
       appBar: AppBar(),
       body: localPath == null
           ? const Center(child: CircularProgressIndicator())
-          : PDFView(
-              filePath: localPath!,
-            ),
+          : PDFView(filePath: localPath!),
     );
   }
 }
-
 
 class AdminScreen extends StatefulWidget {
   const AdminScreen({super.key});
@@ -284,32 +286,76 @@ class _AdminScreenState extends State<AdminScreen> {
   File? video;
   File? pdf;
 
+  final ImagePicker _picker = ImagePicker();
+
   final String uploadUrl = "http://13.203.219.206:8000/infumedz/upload/";
 
-  Future<void> pickFile(bool isVideo) async {
-    final res = await FilePicker.pickFiles(
-      type: isVideo ? FileType.video : FileType.custom,
-      allowedExtensions: isVideo ? null : ["pdf"],
-    );
-    if (res != null) {
+  // ================= VIDEO PICK (SAFE) =================
+  Future<void> pickVideo() async {
+    final XFile? picked = await _picker.pickVideo(source: ImageSource.gallery);
+
+    if (picked != null) {
       setState(() {
-        isVideo ? video = File(res.files.single.path!) : pdf = File(res.files.single.path!);
+        video = File(picked.path);
       });
     }
   }
 
+  // ================= PDF PICK (SAFE) =================
+  Future<void> pickPdf() async {
+    final params = OpenFileDialogParams(
+      dialogType: OpenFileDialogType.document,
+      fileExtensionsFilter: ['pdf'],
+    );
+
+    final String? filePath = await FlutterFileDialog.pickFile(params: params);
+
+    if (filePath != null) {
+      setState(() {
+        pdf = File(filePath);
+      });
+    }
+  }
+
+  // ================= UPLOAD =================
   Future<void> upload() async {
+    if (video == null && pdf == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Select video or PDF first")),
+      );
+      return;
+    }
+
     final req = http.MultipartRequest("POST", Uri.parse(uploadUrl));
+
     req.fields["title"] = "Human Anatomy Basics";
     req.fields["description"] = "Medical content upload";
     req.fields["content_type"] = "BOTH";
 
-    if (video != null) req.files.add(await http.MultipartFile.fromPath("video", video!.path));
-    if (pdf != null) req.files.add(await http.MultipartFile.fromPath("pdf", pdf!.path));
+    if (video != null) {
+      req.files.add(await http.MultipartFile.fromPath("video", video!.path));
+    }
 
-    await req.send();
-    ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Uploaded Successfully")));
+    if (pdf != null) {
+      req.files.add(await http.MultipartFile.fromPath("pdf", pdf!.path));
+    }
+
+    final response = await req.send();
+
+    if (response.statusCode == 201) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text("Uploaded Successfully")));
+
+      setState(() {
+        video = null;
+        pdf = null;
+      });
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Upload failed (${response.statusCode})")),
+      );
+    }
   }
 
   @override
@@ -320,16 +366,24 @@ class _AdminScreenState extends State<AdminScreen> {
         padding: const EdgeInsets.all(16),
         child: Column(
           children: [
-            ElevatedButton(
-                onPressed: () => pickFile(true),
-                child: const Text("Select Video")),
-            ElevatedButton(
-                onPressed: () => pickFile(false),
-                child: const Text("Select PDF")),
+            ElevatedButton.icon(
+              onPressed: pickVideo,
+              icon: const Icon(Icons.video_library),
+              label: Text(video == null ? "Select Video" : "Video Selected"),
+            ),
+            const SizedBox(height: 10),
+
+            ElevatedButton.icon(
+              onPressed: pickPdf,
+              icon: const Icon(Icons.picture_as_pdf),
+              label: Text(pdf == null ? "Select PDF" : "PDF Selected"),
+            ),
             const SizedBox(height: 20),
+
             ElevatedButton(
-                onPressed: upload,
-                child: const Text("Upload to Backend")),
+              onPressed: upload,
+              child: const Text("Upload to Backend"),
+            ),
           ],
         ),
       ),
