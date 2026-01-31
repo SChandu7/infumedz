@@ -831,7 +831,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
             },
           ),
 
-          const SizedBox(height: 24),
+          const SizedBox(height: 12),
 
           /// Courses
           const Text(
@@ -842,10 +842,12 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
 
           ...List.generate(
             3,
-            (i) => CourseCard(
-              title: "DM Cardiology Complete Course",
+            (i) => YoutubeStyleCourseCard(
+              title: "DM Cardiology – Complete Video Course",
+              views: "12.4K learners",
+              meta: "120 videos • 40 PDFs • 6 months access",
               price: "₹14,999",
-              meta: "120 Videos • 40 PDFs",
+              thumbnail: "assets/thumbnail1.avif", // add your asset
             ),
           ),
         ],
@@ -854,39 +856,147 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
   }
 }
 
-class CourseCard extends StatelessWidget {
+class YoutubeStyleCourseCard extends StatelessWidget {
   final String title;
-  final String price;
+  final String views;
   final String meta;
+  final String price;
+  final String thumbnail;
 
-  const CourseCard({
+  const YoutubeStyleCourseCard({
     super.key,
     required this.title,
-    required this.price,
+    required this.views,
     required this.meta,
+    required this.price,
+    required this.thumbnail,
   });
 
   @override
   Widget build(BuildContext context) {
-    return Card(
-      margin: const EdgeInsets.only(bottom: 14),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
-      child: ListTile(
-        contentPadding: const EdgeInsets.all(16),
-        title: Text(title, style: const TextStyle(fontWeight: FontWeight.bold)),
-        subtitle: Text(meta),
-        trailing: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
+    return InkWell(
+      onTap: () {
+        // TODO: open course details
+      },
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 8),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              price,
-              style: const TextStyle(
-                fontWeight: FontWeight.bold,
-                color: Colors.indigo,
+            // 🖼 Thumbnail (Left)
+            ClipRRect(
+              borderRadius: BorderRadius.circular(6),
+              child: Stack(
+                alignment: Alignment.center,
+                children: [
+                  // Thumbnail Image
+                  Image.asset(
+                    thumbnail,
+                    width: 140,
+                    height: 80,
+                    fit: BoxFit.cover,
+                  ),
+
+                  // Dark overlay (subtle)
+                  Container(
+                    width: 140,
+                    height: 80,
+                    color: Colors.black.withOpacity(0.15),
+                  ),
+
+                  // ▶️ Play Button
+                  Container(
+                    width: 36,
+                    height: 36,
+                    decoration: BoxDecoration(
+                      color: Colors.black.withOpacity(0.55),
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(
+                      Icons.play_arrow_rounded,
+                      color: Colors.white,
+                      size: 22,
+                    ),
+                  ),
+                ],
               ),
             ),
-            const SizedBox(height: 6),
-            const Icon(Icons.arrow_forward_ios, size: 14),
+
+            const SizedBox(width: 12),
+
+            // 📄 Details (Right)
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // TITLE + MENU
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Expanded(
+                        child: Text(
+                          title,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            fontSize: 14.5,
+                            fontWeight: FontWeight.w600,
+                            color: Color(0xFF1F3C68),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 6),
+                      const Icon(Icons.more_vert, size: 18, color: Colors.grey),
+                    ],
+                  ),
+
+                  const SizedBox(height: 3),
+
+                  // META
+
+                  // VIEWS / LEARNERS
+                  Text(
+                    views,
+                    style: const TextStyle(fontSize: 12, color: Colors.black45),
+                  ),
+
+                  const SizedBox(height: 3),
+
+                  // PRICE + BUY
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        price,
+                        style: const TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.bold,
+                          color: Color(0xFF0E5FD8), // medical blue
+                        ),
+                      ),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 10,
+                          vertical: 4,
+                        ),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF0E5FD8).withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: const Text(
+                          "Buy",
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            color: Color(0xFF0E5FD8),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
           ],
         ),
       ),
@@ -894,9 +1004,6 @@ class CourseCard extends StatelessWidget {
   }
 }
 
-/* ---------------------------------------------------
-   PLACEHOLDERS
---------------------------------------------------- */
 class LibraryPage extends StatelessWidget {
   const LibraryPage({super.key});
   @override
