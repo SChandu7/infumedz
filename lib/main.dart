@@ -375,12 +375,61 @@ class HomePage extends StatefulWidget {
 
 class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
   static final categories = ["MBBS", "MD/MS", "DM/DrNB"];
+  static final coursess = ["Medicine", "Post-Graduate", "Super-Speciality"];
   final PageController _controller = PageController(viewportFraction: 0.92);
   int _currentIndex = 0;
   late AnimationController _marqueeController;
   late Animation<double> _marqueeAnimation;
   final List<String> marqueeTexts = [
     "“At InfusionMedz, we are dedicated to delivering a comprehensive medical learning experience that seamlessly bridges the gap between strong theoretical foundations and real-world clinical practice.“ ",
+  ];
+  final List<Map<String, String>> popularCourses = [
+    {
+      "title": "DM Cardiology – Complete Video Course",
+      "views": "12.4K learners",
+      "meta": "120 videos • 40 PDFs • 6 months access",
+      "price": "₹3,499",
+      "thumbnail": "assets/thumbnail1.avif",
+    },
+    {
+      "title": "MBBS Anatomy – Video & Notes",
+      "views": "8.1K learners",
+      "meta": "80 videos • 25 PDFs • Lifetime access",
+      "price": "₹9,499",
+      "thumbnail": "assets/thumbnail2.jpg",
+    },
+    {
+      "title": "MD Medicine – Clinical Q&A Series",
+      "views": "37.9K learners",
+      "meta": "150 videos • Case discussions",
+      "price": "₹14,999",
+      "thumbnail": "assets/thumbnail3.webp",
+    },
+  ];
+
+  final List<Map<String, String>> popularCourses2 = [
+    {
+      "title": "Essentials of Cardiology – DM & DrNB Notes",
+      "views": "11.2K readers",
+      "meta": "410 Pages • PDF • Concept-focused",
+      "price": "₹3,999",
+      "thumbnail": "assets/thumbnail11.jpg",
+    },
+
+    {
+      "title": "Radiology – Image Based Question & Answer Book",
+      "views": "8.9K readers",
+      "meta": "280 Pages • PDF • Image-centric",
+      "price": "₹2,499",
+      "thumbnail": "assets/thumbnail33.jpg",
+    },
+    {
+      "title": "Paediatrics – Rapid Review Handbook",
+      "views": "23.1K readers",
+      "meta": "240 Pages • PDF • Quick revision",
+      "price": "₹1,899",
+      "thumbnail": "assets/thumbnail44.webp",
+    },
   ];
 
   final List<String> images = [
@@ -654,9 +703,9 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
               },
               itemBuilder: (context, index) {
                 return AnimatedPadding(
-                  duration: const Duration(milliseconds: 300),
+                  duration: const Duration(milliseconds: 400),
                   padding: EdgeInsets.symmetric(
-                    horizontal: index == _currentIndex ? 6 : 12,
+                    horizontal: index == _currentIndex ? 4 : 4,
                   ),
                   child: ClipRRect(
                     borderRadius: BorderRadius.circular(10),
@@ -757,19 +806,19 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
             itemCount: categories.length,
             gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
               crossAxisCount: 3,
-              childAspectRatio: 0.95,
+              childAspectRatio: 0.99,
               crossAxisSpacing: 12,
               mainAxisSpacing: 12,
             ),
             itemBuilder: (context, i) {
               return InkWell(
-                borderRadius: BorderRadius.circular(18),
+                borderRadius: BorderRadius.circular(8),
                 onTap: () {
                   // TODO: navigate / filter by category
                 },
                 child: Container(
                   decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(18),
+                    borderRadius: BorderRadius.circular(12),
                     gradient: const LinearGradient(
                       begin: Alignment.topLeft,
                       end: Alignment.bottomRight,
@@ -787,7 +836,10 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                     ],
                     border: Border.all(color: const Color(0xFFDDE8F5)),
                   ),
-                  padding: const EdgeInsets.all(12),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 0,
+                  ),
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
@@ -806,7 +858,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                         ),
                       ),
 
-                      const SizedBox(height: 10),
+                      const SizedBox(height: 6),
 
                       // 🔹 TITLE
                       Text(
@@ -821,9 +873,19 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                         ),
                       ),
 
-                      const SizedBox(height: 4),
+                      const SizedBox(height: 1),
 
                       // 🔹 SUB TEXT (optional – future ready)
+                      Text(
+                        coursess[i],
+                        textAlign: TextAlign.center,
+                        maxLines: 2,
+                        style: const TextStyle(
+                          fontSize: 10,
+                          fontWeight: FontWeight.w400,
+                          color: Color(0xFF6B7C93),
+                        ),
+                      ),
                     ],
                   ),
                 ),
@@ -836,20 +898,41 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
           /// Courses
           const Text(
             "Popular Courses",
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
+            style: TextStyle(fontSize: 20, fontWeight: FontWeight.w600),
           ),
+          const SizedBox(height: 2),
+
+          ...List.generate(popularCourses.length, (i) {
+            final course = popularCourses[i];
+
+            return YoutubeStyleCourseCard(
+              title: course["title"]!,
+              views: course["views"]!,
+              meta: course["meta"]!,
+              price: course["price"]!,
+              thumbnail: course["thumbnail"]!,
+            );
+          }),
           const SizedBox(height: 12),
 
-          ...List.generate(
-            3,
-            (i) => YoutubeStyleCourseCard(
-              title: "DM Cardiology – Complete Video Course",
-              views: "12.4K learners",
-              meta: "120 videos • 40 PDFs • 6 months access",
-              price: "₹14,999",
-              thumbnail: "assets/thumbnail1.avif", // add your asset
-            ),
+          /// Courses
+          const Text(
+            "Popular Boooks",
+            style: TextStyle(fontSize: 20, fontWeight: FontWeight.w600),
           ),
+          const SizedBox(height: 2),
+
+          ...List.generate(popularCourses2.length, (i) {
+            final course = popularCourses2[i];
+
+            return YoutubeStyleCourseCard2(
+              title: course["title"]!,
+              views: course["views"]!,
+              meta: course["meta"]!,
+              price: course["price"]!,
+              thumbnail: course["thumbnail"]!,
+            );
+          }),
         ],
       ),
     );
@@ -914,6 +997,154 @@ class YoutubeStyleCourseCard extends StatelessWidget {
                     ),
                     child: const Icon(
                       Icons.play_arrow_rounded,
+                      color: Colors.white,
+                      size: 22,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
+            const SizedBox(width: 12),
+
+            // 📄 Details (Right)
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // TITLE + MENU
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Expanded(
+                        child: Text(
+                          title,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            fontSize: 14.5,
+                            fontWeight: FontWeight.w600,
+                            color: Color(0xFF1F3C68),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 6),
+                      const Icon(Icons.more_vert, size: 18, color: Colors.grey),
+                    ],
+                  ),
+
+                  const SizedBox(height: 3),
+
+                  // META
+
+                  // VIEWS / LEARNERS
+                  Text(
+                    views,
+                    style: const TextStyle(fontSize: 12, color: Colors.black45),
+                  ),
+
+                  const SizedBox(height: 3),
+
+                  // PRICE + BUY
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        price,
+                        style: const TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.bold,
+                          color: Color(0xFF0E5FD8), // medical blue
+                        ),
+                      ),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 10,
+                          vertical: 4,
+                        ),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF0E5FD8).withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: const Text(
+                          "Buy",
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            color: Color(0xFF0E5FD8),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class YoutubeStyleCourseCard2 extends StatelessWidget {
+  final String title;
+  final String views;
+  final String meta;
+  final String price;
+  final String thumbnail;
+
+  const YoutubeStyleCourseCard2({
+    super.key,
+    required this.title,
+    required this.views,
+    required this.meta,
+    required this.price,
+    required this.thumbnail,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: () {
+        // TODO: open course details
+      },
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 8),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // 🖼 Thumbnail (Left)
+            ClipRRect(
+              borderRadius: BorderRadius.circular(6),
+              child: Stack(
+                alignment: Alignment.center,
+                children: [
+                  // Thumbnail Image
+                  Image.asset(
+                    thumbnail,
+                    width: 140,
+                    height: 80,
+                    fit: BoxFit.cover,
+                  ),
+
+                  // Dark overlay (subtle)
+                  Container(
+                    width: 140,
+                    height: 80,
+                    color: Colors.black.withOpacity(0.15),
+                  ),
+
+                  // ▶️ Play Button
+                  Container(
+                    width: 36,
+                    height: 36,
+                    decoration: BoxDecoration(
+                      color: Colors.black.withOpacity(0.55),
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(
+                      Icons.picture_as_pdf,
                       color: Colors.white,
                       size: 22,
                     ),
