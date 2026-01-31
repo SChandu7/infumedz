@@ -25,7 +25,7 @@ class MedicalLearningApp extends StatelessWidget {
         primarySwatch: Colors.indigo,
         scaffoldBackgroundColor: Colors.grey.shade100,
       ),
-      home: const MainNav(),
+      home: InfuMedzApp(),
     );
   }
 }
@@ -306,4 +306,618 @@ class _AdminScreenState extends State<AdminScreen> {
       ),
     );
   }
+}
+
+class InfuMedzApp extends StatelessWidget {
+  const InfuMedzApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      debugShowCheckedModeBanner: false,
+      title: 'InfusionMedz',
+      theme: ThemeData(
+        useMaterial3: true,
+        colorSchemeSeed: Colors.indigo,
+        scaffoldBackgroundColor: const Color(0xFFF6F7FB),
+      ),
+      home: const MainShell(),
+    );
+  }
+}
+
+class MainShell extends StatefulWidget {
+  const MainShell({super.key});
+
+  @override
+  State<MainShell> createState() => _MainShellState();
+}
+
+class _MainShellState extends State<MainShell> {
+  int index = 0;
+
+  final screens = const [
+    HomePage(),
+    LibraryPage(),
+    CartPage(),
+    FavouritesPage(),
+    ProfilePage(),
+  ];
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: screens[index],
+      bottomNavigationBar: NavigationBar(
+        selectedIndex: index,
+        onDestinationSelected: (i) => setState(() => index = i),
+        destinations: const [
+          NavigationDestination(icon: Icon(Icons.home), label: 'Home'),
+          NavigationDestination(
+            icon: Icon(Icons.play_circle),
+            label: 'Library',
+          ),
+          NavigationDestination(icon: Icon(Icons.shopping_cart), label: 'Cart'),
+          NavigationDestination(icon: Icon(Icons.favorite), label: 'Saved'),
+          NavigationDestination(icon: Icon(Icons.person), label: 'Profile'),
+        ],
+      ),
+    );
+  }
+}
+
+class HomePage extends StatefulWidget {
+  const HomePage({super.key});
+
+  @override
+  State<HomePage> createState() => _HomePageState();
+}
+
+class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
+  static final categories = ["MBBS", "MD/MS", "DM/DrNB"];
+  final PageController _controller = PageController(viewportFraction: 0.92);
+  int _currentIndex = 0;
+  late AnimationController _marqueeController;
+  late Animation<double> _marqueeAnimation;
+  final List<String> marqueeTexts = [
+    "“At InfusionMedz, we are dedicated to delivering a comprehensive medical learning experience that seamlessly bridges the gap between strong theoretical foundations and real-world clinical practice.“ ",
+  ];
+
+  final List<String> images = [
+    "assets/banner1.png",
+    "assets/banner2.jpg",
+    "assets/banner3.jpg",
+  ];
+
+  @override
+  void initState() {
+    super.initState();
+
+    _marqueeController = AnimationController(
+      duration: const Duration(seconds: 22), // slower & smoother
+      vsync: this,
+    )..repeat(); // 🔁 MUST repeat
+
+    _marqueeAnimation = CurvedAnimation(
+      parent: _marqueeController,
+      curve: Curves.linear,
+    );
+
+    Future.delayed(const Duration(seconds: 5), _autoScroll);
+  }
+
+  @override
+  void dispose() {
+    _marqueeController.dispose();
+    _controller.dispose();
+
+    super.dispose();
+  }
+
+  Widget _buildMarquee() {
+    final text = marqueeTexts[0];
+
+    return Container(
+      height: 32,
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          colors: [Color(0xFFEDF4FF), Color(0xFFE0F7FF)],
+        ),
+      ),
+      child: Row(
+        children: [
+          const SizedBox(width: 6),
+
+          // ABOUT TAG
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+            decoration: BoxDecoration(
+              color: const Color(0xFF015AA5),
+              borderRadius: BorderRadius.circular(4),
+            ),
+            child: const Text(
+              "About",
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 10,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
+
+          const SizedBox(width: 8),
+
+          // MARQUEE TEXT
+          Expanded(
+            child: ClipRect(
+              child: LayoutBuilder(
+                builder: (context, constraints) {
+                  final screenWidth = constraints.maxWidth;
+
+                  // ✅ Measure text width correctly
+                  final textPainter = TextPainter(
+                    text: TextSpan(
+                      text: text,
+                      style: const TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                    textDirection: TextDirection.ltr,
+                  )..layout();
+
+                  final textWidth = textPainter.width;
+
+                  return AnimatedBuilder(
+                    animation: _marqueeAnimation,
+                    builder: (context, child) {
+                      final dx =
+                          screenWidth -
+                          _marqueeAnimation.value * (screenWidth + textWidth);
+
+                      return Transform.translate(
+                        offset: Offset(dx, 0),
+                        child: child,
+                      );
+                    },
+                    child: Text(
+                      text,
+                      softWrap: false,
+                      overflow: TextOverflow.visible,
+                      style: const TextStyle(
+                        fontSize: 11,
+                        color: Color(0xFF204B78),
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _autoScroll() {
+    if (!mounted) return;
+
+    _currentIndex = (_currentIndex + 1) % images.length;
+
+    _controller.animateToPage(
+      _currentIndex,
+      duration: const Duration(milliseconds: 2800), // smooth
+      curve: Curves.easeInOutCubic,
+    );
+
+    Future.delayed(const Duration(seconds: 4), _autoScroll);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return SafeArea(
+      child: ListView(
+        padding: const EdgeInsets.all(10),
+        children: [
+          /// Header
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              // LEFT: BRAND + GREETING
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: const [
+                  Text(
+                    "InfuMedz",
+                    style: TextStyle(
+                      fontSize: 26,
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: 0.4,
+                    ),
+                  ),
+
+                  Text(
+                    "Medical Learning Simplified",
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: Colors.black54,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ],
+              ),
+
+              // RIGHT: ACTIONS
+              Row(
+                children: [
+                  // Notification
+
+                  // Profile Avatar
+                  Container(
+                    padding: const EdgeInsets.all(2),
+                    decoration: const BoxDecoration(
+                      shape: BoxShape.circle,
+                      gradient: LinearGradient(
+                        colors: [
+                          Color(0xFF4F46E5), // medical indigo
+                          Color(0xFF06B6D4), // cyan accent
+                        ],
+                      ),
+                    ),
+                    child: const CircleAvatar(
+                      radius: 20,
+                      backgroundColor: Colors.white,
+                      child: Icon(
+                        Icons.notifications_none_rounded,
+                        color: Colors.black87,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+
+          const SizedBox(height: 10),
+          SizedBox(
+            height: 50,
+            width: double.infinity,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: const Color(0xFFE0E6ED)),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.05),
+                    blurRadius: 10,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
+              ),
+              child: Row(
+                children: [
+                  const Icon(
+                    Icons.search,
+                    color: Color(0xFF0E5FD8), // medical blue
+                  ),
+                  const SizedBox(width: 10),
+
+                  Expanded(
+                    child: TextField(
+                      decoration: const InputDecoration(
+                        hintText: "Search courses,books…",
+                        hintStyle: TextStyle(color: Colors.grey, fontSize: 15),
+                        border: InputBorder.none,
+                        isCollapsed: true,
+                      ),
+                      style: const TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ),
+
+                  Container(
+                    height: 36,
+                    width: 36,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF0E5FD8).withOpacity(0.12),
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: const Icon(
+                      Icons.tune,
+                      size: 18,
+                      color: Color(0xFF0E5FD8),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 4),
+          _buildMarquee(),
+          const SizedBox(height: 8),
+
+          /// Hero Banner
+          // ------------------ CAROUSEL ------------------
+          SizedBox(
+            height: 200,
+            child: PageView.builder(
+              controller: _controller,
+              itemCount: images.length,
+              onPageChanged: (i) {
+                setState(() => _currentIndex = i);
+              },
+              itemBuilder: (context, index) {
+                return AnimatedPadding(
+                  duration: const Duration(milliseconds: 300),
+                  padding: EdgeInsets.symmetric(
+                    horizontal: index == _currentIndex ? 6 : 12,
+                  ),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(10),
+                    child: Stack(
+                      fit: StackFit.expand,
+                      children: [
+                        // 🖼 IMAGE
+                        Image.asset(images[index], fit: BoxFit.cover),
+
+                        // 🌫 DARK GRADIENT OVERLAY
+                        // Container(
+                        //   decoration: const BoxDecoration(
+                        //     gradient: LinearGradient(
+                        //       begin: Alignment.bottomCenter,
+                        //       end: Alignment.topCenter,
+                        //       colors: [Colors.black54, Colors.transparent],
+                        //     ),
+                        //   ),
+                        // ),
+
+                        // 🧠 TEXT
+                      ],
+                    ),
+                  ),
+                );
+              },
+            ),
+          ),
+
+          const SizedBox(height: 5),
+
+          // 🔘 INDICATORS
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: List.generate(
+              images.length,
+              (i) => AnimatedContainer(
+                duration: const Duration(milliseconds: 300),
+                margin: const EdgeInsets.symmetric(horizontal: 4),
+                width: _currentIndex == i ? 18 : 8,
+                height: 8,
+                decoration: BoxDecoration(
+                  color: _currentIndex == i
+                      ? const Color(0xFF4F46E5) // brand indigo
+                      : Colors.grey.shade400,
+                  borderRadius: BorderRadius.circular(10),
+                ),
+              ),
+            ),
+          ),
+
+          const SizedBox(height: 8),
+
+          /// Level Filter
+
+          /// Categories
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              // LEFT: Title + subtitle
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: const [
+                  Text(
+                    "Categories",
+                    style: TextStyle(
+                      fontSize: 22,
+                      fontWeight: FontWeight.w700,
+                      color: Color(0xFF1F3C68),
+                    ),
+                  ),
+                ],
+              ),
+
+              // RIGHT: View all
+              GestureDetector(
+                onTap: () {
+                  // TODO: navigate to all categories screen
+                },
+                child: const Text(
+                  "View all",
+                  style: TextStyle(
+                    fontSize: 15,
+                    color: Color(0xFF0E5FD8), // medical blue
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+            ],
+          ),
+
+          const SizedBox(height: 12),
+
+          GridView.builder(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            itemCount: categories.length,
+            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: 3,
+              childAspectRatio: 0.95,
+              crossAxisSpacing: 12,
+              mainAxisSpacing: 12,
+            ),
+            itemBuilder: (context, i) {
+              return InkWell(
+                borderRadius: BorderRadius.circular(18),
+                onTap: () {
+                  // TODO: navigate / filter by category
+                },
+                child: Container(
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(18),
+                    gradient: const LinearGradient(
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                      colors: [
+                        Color(0xFFEAF3FF), // soft medical blue
+                        Color(0xFFFFFFFF),
+                      ],
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.06),
+                        blurRadius: 10,
+                        offset: const Offset(0, 6),
+                      ),
+                    ],
+                    border: Border.all(color: const Color(0xFFDDE8F5)),
+                  ),
+                  padding: const EdgeInsets.all(12),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      // 🔹 ICON
+                      Container(
+                        height: 42,
+                        width: 42,
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF0E5FD8).withOpacity(0.12),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: const Icon(
+                          Icons.school,
+                          size: 22,
+                          color: Color(0xFF0E5FD8),
+                        ),
+                      ),
+
+                      const SizedBox(height: 10),
+
+                      // 🔹 TITLE
+                      Text(
+                        categories[i],
+                        textAlign: TextAlign.center,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w700,
+                          color: Color(0xFF1F3C68),
+                        ),
+                      ),
+
+                      const SizedBox(height: 4),
+
+                      // 🔹 SUB TEXT (optional – future ready)
+                    ],
+                  ),
+                ),
+              );
+            },
+          ),
+
+          const SizedBox(height: 24),
+
+          /// Courses
+          const Text(
+            "Popular Courses",
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
+          ),
+          const SizedBox(height: 12),
+
+          ...List.generate(
+            3,
+            (i) => CourseCard(
+              title: "DM Cardiology Complete Course",
+              price: "₹14,999",
+              meta: "120 Videos • 40 PDFs",
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class CourseCard extends StatelessWidget {
+  final String title;
+  final String price;
+  final String meta;
+
+  const CourseCard({
+    super.key,
+    required this.title,
+    required this.price,
+    required this.meta,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      margin: const EdgeInsets.only(bottom: 14),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+      child: ListTile(
+        contentPadding: const EdgeInsets.all(16),
+        title: Text(title, style: const TextStyle(fontWeight: FontWeight.bold)),
+        subtitle: Text(meta),
+        trailing: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Text(
+              price,
+              style: const TextStyle(
+                fontWeight: FontWeight.bold,
+                color: Colors.indigo,
+              ),
+            ),
+            const SizedBox(height: 6),
+            const Icon(Icons.arrow_forward_ios, size: 14),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/* ---------------------------------------------------
+   PLACEHOLDERS
+--------------------------------------------------- */
+class LibraryPage extends StatelessWidget {
+  const LibraryPage({super.key});
+  @override
+  Widget build(BuildContext context) => const Center(child: Text("My Library"));
+}
+
+class CartPage extends StatelessWidget {
+  const CartPage({super.key});
+  @override
+  Widget build(BuildContext context) => const Center(child: Text("Cart"));
+}
+
+class FavouritesPage extends StatelessWidget {
+  const FavouritesPage({super.key});
+  @override
+  Widget build(BuildContext context) =>
+      const Center(child: Text("Saved Courses"));
+}
+
+class ProfilePage extends StatelessWidget {
+  const ProfilePage({super.key});
+  @override
+  Widget build(BuildContext context) => const Center(child: Text("Profile"));
 }
