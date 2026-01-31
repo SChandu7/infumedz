@@ -574,57 +574,70 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              // LEFT: BRAND + GREETING
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: const [
-                  Text(
-                    "InfuMedz",
-                    style: TextStyle(
-                      fontSize: 26,
-                      fontWeight: FontWeight.w800,
-                      letterSpacing: 0.4,
+              // LEFT: LOGO + BRAND TEXT
+              Row(
+                children: [
+                  // 🔷 LOGO CONTAINER
+                  Container(
+                    height: 60,
+                    width: 60,
+
+                    child: Padding(
+                      padding: const EdgeInsets.all(1),
+                      child: Image.asset(
+                        "assets/logo.png", // 👈 your logo
+                        fit: BoxFit.contain,
+                      ),
                     ),
                   ),
 
-                  Text(
-                    "Medical Learning Simplified",
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: Colors.black54,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
+                  // 🧠 BRAND TEXT
                 ],
               ),
 
-              // RIGHT: ACTIONS
-              Row(
-                children: [
-                  // Notification
+              Center(
+                child: Column(
+                  //crossAxisAlignment: CrossAxisAlignment.start,
+                  children: const [
+                    Text(
+                      "InfuMedz",
+                      style: TextStyle(
+                        fontSize: 26,
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: 0.4,
+                        color: Color(0xFF1F3C68),
+                      ),
+                    ),
+                    // SizedBox(height: 2),
+                    // Text(
+                    //   "Medical Learning Platform",
+                    //   style: TextStyle(
+                    //     fontSize: 12,
+                    //     color: Colors.black54,
+                    //     fontWeight: FontWeight.w500,
+                    //   ),
+                    // ),
+                  ],
+                ),
+              ),
 
-                  // Profile Avatar
-                  Container(
-                    padding: const EdgeInsets.all(2),
-                    decoration: const BoxDecoration(
-                      shape: BoxShape.circle,
-                      gradient: LinearGradient(
-                        colors: [
-                          Color(0xFF4F46E5), // medical indigo
-                          Color(0xFF06B6D4), // cyan accent
-                        ],
-                      ),
-                    ),
-                    child: const CircleAvatar(
-                      radius: 20,
-                      backgroundColor: Colors.white,
-                      child: Icon(
-                        Icons.notifications_none_rounded,
-                        color: Colors.black87,
-                      ),
-                    ),
+              // RIGHT: NOTIFICATION / PROFILE
+              Container(
+                padding: const EdgeInsets.all(2),
+                decoration: const BoxDecoration(
+                  shape: BoxShape.circle,
+                  gradient: LinearGradient(
+                    colors: [Color(0xFF4F46E5), Color(0xFF06B6D4)],
                   ),
-                ],
+                ),
+                child: const CircleAvatar(
+                  radius: 20,
+                  backgroundColor: Colors.white,
+                  child: Icon(
+                    Icons.notifications_none_rounded,
+                    color: Colors.black87,
+                  ),
+                ),
               ),
             ],
           ),
@@ -967,41 +980,55 @@ class YoutubeStyleCourseCard extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // 🖼 Thumbnail (Left)
-            ClipRRect(
-              borderRadius: BorderRadius.circular(6),
-              child: Stack(
-                alignment: Alignment.center,
-                children: [
-                  // Thumbnail Image
-                  Image.asset(
-                    thumbnail,
-                    width: 140,
-                    height: 80,
-                    fit: BoxFit.cover,
-                  ),
-
-                  // Dark overlay (subtle)
-                  Container(
-                    width: 140,
-                    height: 80,
-                    color: Colors.black.withOpacity(0.15),
-                  ),
-
-                  // ▶️ Play Button
-                  Container(
-                    width: 36,
-                    height: 36,
-                    decoration: BoxDecoration(
-                      color: Colors.black.withOpacity(0.55),
-                      shape: BoxShape.circle,
-                    ),
-                    child: const Icon(
-                      Icons.play_arrow_rounded,
-                      color: Colors.white,
-                      size: 22,
+            InkWell(
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => VideoPlayerScreen(
+                      url:
+                          "https://djangotestcase.s3.ap-south-1.amazonaws.com/medical/videos/54cfac91-079b-481d-8d8c-9916924954f0_1000205769.mp4",
+                      title: title,
                     ),
                   ),
-                ],
+                );
+              },
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(6),
+                child: Stack(
+                  alignment: Alignment.center,
+                  children: [
+                    // Thumbnail Image
+                    Image.asset(
+                      thumbnail,
+                      width: 140,
+                      height: 80,
+                      fit: BoxFit.cover,
+                    ),
+
+                    // Dark overlay (subtle)
+                    Container(
+                      width: 140,
+                      height: 80,
+                      color: Colors.black.withOpacity(0.15),
+                    ),
+
+                    // ▶️ Play Button
+                    Container(
+                      width: 36,
+                      height: 36,
+                      decoration: BoxDecoration(
+                        color: Colors.black.withOpacity(0.55),
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(
+                        Icons.play_arrow_rounded,
+                        color: Colors.white,
+                        size: 22,
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
 
@@ -1115,41 +1142,55 @@ class YoutubeStyleCourseCard2 extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // 🖼 Thumbnail (Left)
-            ClipRRect(
-              borderRadius: BorderRadius.circular(6),
-              child: Stack(
-                alignment: Alignment.center,
-                children: [
-                  // Thumbnail Image
-                  Image.asset(
-                    thumbnail,
-                    width: 140,
-                    height: 80,
-                    fit: BoxFit.cover,
-                  ),
-
-                  // Dark overlay (subtle)
-                  Container(
-                    width: 140,
-                    height: 80,
-                    color: Colors.black.withOpacity(0.15),
-                  ),
-
-                  // ▶️ Play Button
-                  Container(
-                    width: 36,
-                    height: 36,
-                    decoration: BoxDecoration(
-                      color: Colors.black.withOpacity(0.55),
-                      shape: BoxShape.circle,
-                    ),
-                    child: const Icon(
-                      Icons.picture_as_pdf,
-                      color: Colors.white,
-                      size: 22,
+            InkWell(
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => PdfScreen(
+                      pdfUrl:
+                          "https://djangotestcase.s3.ap-south-1.amazonaws.com/medical/pdfs/54cfac91-079b-481d-8d8c-9916924954f0_CASTOR.pdf",
+                      title: title,
                     ),
                   ),
-                ],
+                );
+              },
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(6),
+                child: Stack(
+                  alignment: Alignment.center,
+                  children: [
+                    // Thumbnail Image
+                    Image.asset(
+                      thumbnail,
+                      width: 140,
+                      height: 80,
+                      fit: BoxFit.cover,
+                    ),
+
+                    // Dark overlay (subtle)
+                    Container(
+                      width: 140,
+                      height: 80,
+                      color: Colors.black.withOpacity(0.15),
+                    ),
+
+                    // ▶️ Play Button
+                    Container(
+                      width: 36,
+                      height: 36,
+                      decoration: BoxDecoration(
+                        color: Colors.black.withOpacity(0.55),
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(
+                        Icons.picture_as_pdf,
+                        color: Colors.white,
+                        size: 22,
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
 
