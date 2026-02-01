@@ -338,8 +338,8 @@ class _MainShellState extends State<MainShell> {
 
   final screens = const [
     HomePage(),
-    LibraryPage(),
     MedicalStoreScreen(),
+    LibraryPage(),
 
     FavouritesPage(),
     ProfilePage(),
@@ -356,10 +356,12 @@ class _MainShellState extends State<MainShell> {
           NavigationDestination(icon: Icon(Icons.home), label: 'Home'),
           NavigationDestination(
             icon: Icon(Icons.play_circle),
+            label: 'Explore',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.shopping_cart),
             label: 'Library',
           ),
-          NavigationDestination(icon: Icon(Icons.shopping_cart), label: 'Cart'),
-          NavigationDestination(icon: Icon(Icons.favorite), label: 'Saved'),
           NavigationDestination(icon: Icon(Icons.person), label: 'Profile'),
         ],
       ),
@@ -798,7 +800,10 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
               // RIGHT: View all
               GestureDetector(
                 onTap: () {
-                  // TODO: navigate to all categories screen
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => MedicalStoreScreen()),
+                  );
                 },
                 child: const Text(
                   "View all",
@@ -828,6 +833,32 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
               return InkWell(
                 borderRadius: BorderRadius.circular(8),
                 onTap: () {
+                  if (i == 1) {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) =>
+                            const MedicalStoreScreen(initialCategory: "MD/MS"),
+                      ),
+                    );
+                  } else if (i == 2) {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => const MedicalStoreScreen(
+                          initialCategory: "DM/DrNB",
+                        ),
+                      ),
+                    );
+                  } else {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) =>
+                            const MedicalStoreScreen(initialCategory: "MBBS"),
+                      ),
+                    );
+                  }
                   // TODO: navigate / filter by category
                 },
                 child: Container(
@@ -1279,9 +1310,315 @@ class YoutubeStyleCourseCard2 extends StatelessWidget {
 
 class LibraryPage extends StatelessWidget {
   const LibraryPage({super.key});
+
   @override
-  Widget build(BuildContext context) => const Center(child: Text("My Library"));
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: const Color(0xFFF6F8FC),
+      appBar: AppBar(
+        title: const Text(
+          "My Library",
+          style: TextStyle(
+            fontWeight: FontWeight.w700,
+            color: Color(0xFF1F3C68),
+          ),
+        ),
+        backgroundColor: Colors.white,
+        elevation: 0.5,
+      ),
+      body: ListView(
+        padding: const EdgeInsets.all(16),
+        children: [
+          /// 📊 OVERVIEW
+          _LibraryStats(),
+
+          const SizedBox(height: 20),
+
+          /// 🎓 COURSES
+          const Text(
+            "My Courses",
+            style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700),
+          ),
+          const SizedBox(height: 12),
+
+          ...libraryCourses.map((course) => _LibraryCourseCard(course: course)),
+
+          const SizedBox(height: 28),
+
+          /// 📄 PDFs
+          const Text(
+            "My Notes & PDFs",
+            style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700),
+          ),
+          const SizedBox(height: 12),
+
+          ...libraryPdfs.map((pdf) => _LibraryPdfCard(pdf: pdf)),
+        ],
+      ),
+    );
+  }
 }
+
+class _LibraryStats extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(14),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 10,
+            offset: const Offset(0, 5),
+          ),
+        ],
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: const [
+          _StatItem(title: "Courses", value: "2"),
+          _StatItem(title: "PDFs", value: "1"),
+          _StatItem(title: "Completed", value: "1"),
+        ],
+      ),
+    );
+  }
+}
+
+class _StatItem extends StatelessWidget {
+  final String title;
+  final String value;
+
+  const _StatItem({required this.title, required this.value});
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        Text(
+          value,
+          style: const TextStyle(
+            fontSize: 22,
+            fontWeight: FontWeight.bold,
+            color: Color(0xFF0E5FD8),
+          ),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          title,
+          style: const TextStyle(fontSize: 12, color: Colors.black54),
+        ),
+      ],
+    );
+  }
+}
+
+class _LibraryCourseCard extends StatelessWidget {
+  final Map<String, dynamic> course;
+
+  const _LibraryCourseCard({required this.course});
+
+  @override
+  Widget build(BuildContext context) {
+    final progress = course["progress"];
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 14),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(14),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.04),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          /// THUMBNAIL
+          ClipRRect(
+            borderRadius: BorderRadius.circular(10),
+            child: Image.asset(
+              course["image"],
+              width: 90,
+              height: 70,
+              fit: BoxFit.cover,
+            ),
+          ),
+
+          const SizedBox(width: 12),
+
+          /// DETAILS
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  course["title"],
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                const SizedBox(height: 6),
+
+                /// PROGRESS BAR
+                LinearProgressIndicator(
+                  value: progress / 100,
+                  minHeight: 6,
+                  borderRadius: BorderRadius.circular(6),
+                  backgroundColor: Colors.grey.shade200,
+                  color: const Color(0xFF0E5FD8),
+                ),
+
+                const SizedBox(height: 6),
+
+                Text(
+                  "$progress% completed ",
+                  style: const TextStyle(fontSize: 12, color: Colors.black54),
+                ),
+              ],
+            ),
+          ),
+
+          const SizedBox(width: 8),
+
+          /// RESUME
+          ElevatedButton(
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => VideoPlayerScreen(
+                    url:
+                        "https://djangotestcase.s3.ap-south-1.amazonaws.com/medical/videos/54cfac91-079b-481d-8d8c-9916924954f0_1000205769.mp4",
+                    title: "",
+                  ),
+                ),
+              );
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF0E5FD8),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
+              ),
+            ),
+            child: const Text(
+              "Resume",
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                color: Colors.white,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _LibraryPdfCard extends StatelessWidget {
+  final Map<String, dynamic> pdf;
+
+  const _LibraryPdfCard({required this.pdf});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 14),
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(14),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.04),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          const Icon(Icons.picture_as_pdf, size: 36, color: Colors.red),
+
+          const SizedBox(width: 12),
+
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  pdf["title"],
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w600,
+                    fontSize: 14,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  pdf["meta"],
+                  style: const TextStyle(fontSize: 12, color: Colors.black54),
+                ),
+              ],
+            ),
+          ),
+
+          TextButton(
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => PdfScreen(
+                    pdfUrl:
+                        "https://djangotestcase.s3.ap-south-1.amazonaws.com/medical/pdfs/54cfac91-079b-481d-8d8c-9916924954f0_CASTOR.pdf",
+                    title: pdf["title"],
+                  ),
+                ),
+              );
+            },
+            child: const Text(
+              "Open",
+              style: TextStyle(fontWeight: FontWeight.bold),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+final libraryCourses = [
+  {
+    "title": "MBBS Anatomy – Clinical Approach",
+    "image": "assets/thumbnail2.jpg",
+    "progress": 30,
+    "completed": 27,
+    "total": 90,
+  },
+  {
+    "title": "MD Medicine – Clinical Q&A Series",
+    "image": "assets/thumbnail3.webp",
+    "progress": 10,
+    "completed": 15,
+    "total": 150,
+  },
+];
+
+final libraryPdfs = [
+  {
+    "title": "General Medicine – Rapid Revision Notes",
+    "meta": "780 Pages • PDF",
+  },
+];
 
 class CartPage extends StatelessWidget {
   const CartPage({super.key});
@@ -1293,7 +1630,7 @@ class FavouritesPage extends StatelessWidget {
   const FavouritesPage({super.key});
   @override
   Widget build(BuildContext context) =>
-      const Center(child: Text("Saved Courses"));
+      const Center(child: Text("Profile Coming Soon...."));
 }
 
 class ProfilePage extends StatelessWidget {
@@ -1303,7 +1640,12 @@ class ProfilePage extends StatelessWidget {
 }
 
 class MedicalStoreScreen extends StatefulWidget {
-  const MedicalStoreScreen({super.key});
+  final String initialCategory; // 👈 NEW
+
+  const MedicalStoreScreen({
+    super.key,
+    this.initialCategory = "MBBS", // 👈 default
+  });
 
   @override
   State<MedicalStoreScreen> createState() => _MedicalStoreScreenState();
@@ -1311,12 +1653,13 @@ class MedicalStoreScreen extends StatefulWidget {
 
 class _MedicalStoreScreenState extends State<MedicalStoreScreen> {
   String selectedType = "Courses";
-  String selectedCategory = "MBBS";
+  late String selectedCategory;
   final List<Map<String, dynamic>> wishlistItems = [];
 
   final categories = ["MBBS", "MD/MS", "DM/DrNB"];
 
   final courses = [
+    // 🔹 DM / Super-specialty
     {
       "title": "DM Cardiology – Complete Course",
       "meta": "120 Videos • 40 PDFs • 6 Months",
@@ -1326,6 +1669,55 @@ class _MedicalStoreScreenState extends State<MedicalStoreScreen> {
       "tag": "Bestseller",
     },
     {
+      "title": "DM Neurology – Clinical Practice Mastery",
+      "meta": "110 Videos • EEG • Case PDFs",
+      "learners": "9.4K learners",
+      "price": "₹16,499",
+      "image": "assets/thumbnail2.jpg",
+      "tag": "Advanced",
+    },
+    {
+      "title": "DM Endocrinology – Case Based Learning",
+      "meta": "85 Videos • Real-life cases",
+      "learners": "7.1K learners",
+      "price": "₹13,999",
+      "image": "assets/thumbnail3.webp",
+    },
+
+    // 🔹 MD / MS
+    {
+      "title": "MD Medicine – Clinical Q&A Series",
+      "meta": "150 Videos • Case discussions",
+      "learners": "37.9K learners",
+      "price": "₹14,999",
+      "image": "assets/thumbnail1.avif",
+      "tag": "Top Rated",
+    },
+    {
+      "title": "MD Pediatrics – Growth & Development",
+      "meta": "95 Videos • Neonatal cases",
+      "learners": "21.3K learners",
+      "price": "₹11,499",
+      "image": "assets/thumbnail2.jpg",
+    },
+    {
+      "title": "MS General Surgery – OR to Ward",
+      "meta": "100 Videos • Surgical techniques",
+      "learners": "19.8K learners",
+      "price": "₹12,999",
+      "image": "assets/thumbnail3.webp",
+    },
+    {
+      "title": "MD Radiology – Imaging Simplified",
+      "meta": "CT • MRI • X-Ray • 200+ Cases",
+      "learners": "26.7K learners",
+      "price": "₹15,999",
+      "image": "assets/thumbnail1.avif",
+      "tag": "High Demand",
+    },
+
+    // 🔹 MBBS
+    {
       "title": "MBBS Anatomy – Clinical Approach",
       "meta": "90 Videos • 20 PDFs",
       "learners": "12.4K learners",
@@ -1333,34 +1725,130 @@ class _MedicalStoreScreenState extends State<MedicalStoreScreen> {
       "image": "assets/thumbnail2.jpg",
     },
     {
-      "title": "MD Medicine – Clinical Q&A Series",
-      "learners": "37.9K learners",
-      "meta": "150 videos • Case discussions",
-      "price": "₹14,999",
+      "title": "MBBS Physiology – Concept to Clinic",
+      "meta": "70 Videos • Diagrams • PDFs",
+      "learners": "14.6K learners",
+      "price": "₹5,999",
+      "image": "assets/thumbnail3.webp",
+    },
+    {
+      "title": "MBBS Pathology – Case Based Learning",
+      "meta": "80 Videos • Histology Slides",
+      "learners": "16.2K learners",
+      "price": "₹6,999",
+      "image": "assets/thumbnail1.avif",
+    },
+
+    // 🔹 Entrance / Competitive
+    {
+      "title": "NEET PG – Integrated Preparation",
+      "meta": "300+ Videos • MCQs • PDFs",
+      "learners": "48.5K learners",
+      "price": "₹19,999",
+      "image": "assets/thumbnail2.jpg",
+      "tag": "Most Popular",
+    },
+    {
+      "title": "INICET – High Yield Topics",
+      "meta": "120 Videos • PYQs Explained",
+      "learners": "28.9K learners",
+      "price": "₹12,499",
       "image": "assets/thumbnail3.webp",
     },
   ];
-
   final books = [
+    // 🔹 Core Medicine
     {
       "title": "General Medicine – Rapid Revision Notes",
       "meta": "PDF Book • 780 Pages",
       "learners": "22K readers",
       "price": "₹1,499",
       "image": "assets/thumbnail11.jpg",
+      "tag": "Bestseller",
     },
     {
       "title": "Pathology – Case Based Learning",
-      "meta": "Illustrated PDF",
+      "meta": "Illustrated PDF • Histopathology",
       "learners": "9.8K readers",
       "price": "₹999",
       "image": "assets/thumbnail22.jpg",
     },
     {
       "title": "Paediatrics – Rapid Review Handbook",
+      "meta": "240 Pages • PDF • Quick Revision",
       "learners": "23.1K readers",
-      "meta": "240 Pages • PDF • Quick revision",
       "price": "₹1,899",
+      "image": "assets/thumbnail44.webp",
+    },
+
+    // 🔹 MBBS Subjects
+    {
+      "title": "Anatomy – Clinical Anatomy Atlas",
+      "meta": "High-Yield Diagrams • PDF",
+      "learners": "18.4K readers",
+      "price": "₹1,299",
+      "image": "assets/thumbnail33.jpg",
+    },
+    {
+      "title": "Physiology – Concept Review Notes",
+      "meta": "Flowcharts • Tables • PDF",
+      "learners": "16.8K readers",
+      "price": "₹1,199",
+      "image": "assets/thumbnail11.jpg",
+    },
+    {
+      "title": "Pharmacology – Drug Classification Handbook",
+      "meta": "Charts • Mechanisms • PDF",
+      "learners": "21.2K readers",
+      "price": "₹1,099",
+      "image": "assets/thumbnail22.jpg",
+      "tag": "Exam Favorite",
+    },
+    {
+      "title": "Microbiology – Rapid Revision Notes",
+      "meta": "Flowcharts • Mnemonics • PDF",
+      "learners": "14.5K readers",
+      "price": "₹999",
+      "image": "assets/thumbnail33.jpg",
+    },
+
+    // 🔹 Surgery / Ortho / OBG
+    {
+      "title": "General Surgery – Case Based Review",
+      "meta": "Clinical Scenarios • PDF",
+      "learners": "19.3K readers",
+      "price": "₹1,599",
+      "image": "assets/thumbnail44.webp",
+    },
+    {
+      "title": "Orthopaedics – Exam Oriented Notes",
+      "meta": "X-Ray Based • PDF",
+      "learners": "11.9K readers",
+      "price": "₹1,399",
+      "image": "assets/thumbnail11.jpg",
+    },
+    {
+      "title": "Obstetrics & Gynecology – High Yield Review",
+      "meta": "Flowcharts • Algorithms • PDF",
+      "learners": "17.6K readers",
+      "price": "₹1,699",
+      "image": "assets/thumbnail22.jpg",
+    },
+
+    // 🔹 Competitive Exams
+    {
+      "title": "NEET PG – High Yield Notes",
+      "meta": "MCQ Focused • PDF",
+      "learners": "42.8K readers",
+      "price": "₹2,499",
+      "image": "assets/thumbnail33.jpg",
+      "tag": "Most Popular",
+    },
+    {
+      "title": "INICET – Previous Year Questions Explained",
+      "meta": "Topic-wise PYQs • PDF",
+      "learners": "29.7K readers",
+      "price": "₹1,999",
       "image": "assets/thumbnail44.webp",
     },
   ];
@@ -1376,6 +1864,12 @@ class _MedicalStoreScreenState extends State<MedicalStoreScreen> {
       total += price;
     }
     return total;
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    selectedCategory = widget.initialCategory; // 👈 IMPORTANT
   }
 
   void _openFilterSheet() {
