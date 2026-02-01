@@ -7,6 +7,7 @@ import 'package:flutter_file_dialog/flutter_file_dialog.dart';
 import 'package:flutter/services.dart';
 import 'dart:async';
 import 'package:infumedz/views.dart';
+import 'package:video_player/video_player.dart';
 
 void main() {
   runApp(const MedicalLearningApp());
@@ -1907,10 +1908,17 @@ class CartStore {
   }
 }
 
-class CourseDetailScreen extends StatelessWidget {
+class CourseDetailScreen extends StatefulWidget {
   final Map<String, dynamic> data;
 
   const CourseDetailScreen({super.key, required this.data});
+
+  @override
+  State<CourseDetailScreen> createState() => _CourseDetailScreenState();
+}
+
+class _CourseDetailScreenState extends State<CourseDetailScreen> {
+  bool isPlaying = false;
 
   @override
   Widget build(BuildContext context) {
@@ -1952,7 +1960,7 @@ class CourseDetailScreen extends StatelessWidget {
             Expanded(
               child: ElevatedButton(
                 onPressed: () {
-                  CartStore.add(data);
+                  CartStore.add(widget.data);
 
                   ScaffoldMessenger.of(context).showSnackBar(
                     const SnackBar(content: Text("Added to cart")),
@@ -1966,7 +1974,7 @@ class CourseDetailScreen extends StatelessWidget {
                   ),
                 ),
                 child: Text(
-                  "Add to Cart • ${data["price"]}",
+                  "Add to Cart • ${widget.data["price"]}",
                   style: const TextStyle(
                     fontSize: 15,
                     fontWeight: FontWeight.w700,
@@ -1987,56 +1995,81 @@ class CourseDetailScreen extends StatelessWidget {
             pinned: true,
             elevation: 0,
             leading: IconButton(
-              icon: const Icon(Icons.arrow_back),
-              onPressed: () => Navigator.pop(context),
+              icon: const Icon(
+                Icons.arrow_back,
+                color: Colors.white, // 👈 makes it white
+              ),
+              onPressed: () {
+                setState(() => isPlaying = false);
+                Navigator.pop(context);
+              },
             ),
             flexibleSpace: FlexibleSpaceBar(
               background: Stack(
                 fit: StackFit.expand,
                 children: [
-                  Image.asset(data["image"], fit: BoxFit.cover),
+                  if (!isPlaying)
+                    Image.asset(widget.data["image"], fit: BoxFit.cover)
+                  else
+                    InlineVideoPlayer(
+                      url:
+                          "https://djangotestcase.s3.ap-south-1.amazonaws.com/medical/videos/54cfac91-079b-481d-8d8c-9916924954f0_1000205769.mp4",
+                      title: '',
+                    ),
 
-                  /// Overlay gradient
-                  Container(
-                    decoration: const BoxDecoration(
-                      gradient: LinearGradient(
-                        begin: Alignment.bottomCenter,
-                        end: Alignment.topCenter,
-                        colors: [Colors.black87, Colors.transparent],
+                  if (!isPlaying)
+                    Container(
+                      decoration: const BoxDecoration(
+                        gradient: LinearGradient(
+                          begin: Alignment.bottomCenter,
+                          end: Alignment.topCenter,
+                          colors: [Colors.black87, Colors.transparent],
+                        ),
                       ),
                     ),
-                  ),
 
-                  /// ▶ Play Button
-                  const Center(
-                    child: Icon(
-                      Icons.play_circle_fill,
-                      size: 72,
-                      color: Colors.white70,
-                    ),
-                  ),
+                  if (!isPlaying)
+                    Center(
+                      child: GestureDetector(
+                        onTap: () {
+                          final title = widget.data["title"]
+                              .toString()
+                              .toLowerCase();
 
-                  /// 🏷 Tag
-                  if (data["tag"] != null)
-                    Positioned(
-                      top: 100,
-                      left: 16,
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 10,
-                          vertical: 5,
-                        ),
-                        decoration: BoxDecoration(
-                          color: Colors.orange,
-                          borderRadius: BorderRadius.circular(6),
-                        ),
-                        child: Text(
-                          data["tag"],
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 12,
-                            fontWeight: FontWeight.bold,
-                          ),
+                          final isPdfType =
+                              title.contains("pdf") ||
+                              title.contains("Based") ||
+                              title.contains("notes") ||
+                              title.contains("Rapid") ||
+                              title.contains("rapid revise") ||
+                              title.contains("case based") ||
+                              title.contains("case based") ||
+                              title.contains("case based") ||
+                              title.contains("handbook");
+
+                          if (isPdfType) {
+                            /// 📄 OPEN PDF PAGE (NO setState)
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => PdfScreen(
+                                  pdfUrl:
+                                      "https://djangotestcase.s3.ap-south-1.amazonaws.com/medical/pdfs/54cfac91-079b-481d-8d8c-9916924954f0_CASTOR.pdf",
+                                  title: title,
+                                ),
+                              ),
+                            );
+                          } else {
+                            /// 🎥 PLAY VIDEO INLINE
+                            setState(() {
+                              isPlaying = true;
+                            });
+                          }
+                        },
+                        child: const Icon(
+                          Icons.play_circle_fill,
+                          size: 72,
+                          color: Colors.white70,
                         ),
                       ),
                     ),
@@ -2054,7 +2087,7 @@ class CourseDetailScreen extends StatelessWidget {
                 children: [
                   /// TITLE
                   Text(
-                    data["title"],
+                    widget.data["title"],
                     style: const TextStyle(
                       fontSize: 20,
                       fontWeight: FontWeight.w800,
@@ -2080,7 +2113,7 @@ class CourseDetailScreen extends StatelessWidget {
                       ),
                       const SizedBox(width: 12),
                       Text(
-                        data["learners"] ?? "",
+                        widget.data["learners"] ?? "",
                         style: const TextStyle(
                           fontSize: 12,
                           color: Colors.black54,
@@ -2166,6 +2199,119 @@ class CourseDetailScreen extends StatelessWidget {
               ),
             ),
           ),
+        ],
+      ),
+    );
+  }
+}
+
+class InlineVideoPlayer extends StatefulWidget {
+  final String url;
+  final String title;
+
+  const InlineVideoPlayer({super.key, required this.url, required this.title});
+
+  @override
+  State<InlineVideoPlayer> createState() => _InlineVideoPlayerState();
+}
+
+class _InlineVideoPlayerState extends State<InlineVideoPlayer> {
+  late VideoPlayerController _controller;
+  bool _showControls = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = VideoPlayerController.networkUrl(Uri.parse(widget.url))
+      ..initialize().then((_) {
+        if (mounted) {
+          setState(() {});
+          _controller.play();
+        }
+      });
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  void _togglePlayPause() {
+    setState(() {
+      _controller.value.isPlaying ? _controller.pause() : _controller.play();
+    });
+  }
+
+  void _openFullscreen() async {
+    await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => VideoPlayerScreen(url: widget.url, title: widget.title),
+      ),
+    );
+
+    // resume inline playback after fullscreen exit
+    if (mounted) {
+      setState(() {});
+      _controller.play();
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (!_controller.value.isInitialized) {
+      return const SizedBox(
+        height: 260,
+        child: Center(child: CircularProgressIndicator()),
+      );
+    }
+
+    return GestureDetector(
+      onTap: () => setState(() => _showControls = !_showControls),
+      child: Stack(
+        children: [
+          SizedBox(
+            height: 300,
+            width: double.infinity,
+            child: AspectRatio(
+              aspectRatio: _controller.value.aspectRatio,
+              child: VideoPlayer(_controller),
+            ),
+          ),
+
+          /// 🧩 CONTROLS
+          if (_showControls)
+            Positioned.fill(
+              child: Container(
+                color: Colors.black26,
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    /// ▶️ / ⏸
+                    IconButton(
+                      iconSize: 42,
+                      icon: Icon(
+                        _controller.value.isPlaying
+                            ? Icons.pause_circle
+                            : Icons.play_circle,
+                        color: Colors.white,
+                      ),
+                      onPressed: _togglePlayPause,
+                    ),
+
+                    const SizedBox(width: 24),
+
+                    /// ⛶ FULLSCREEN
+                    IconButton(
+                      iconSize: 32,
+                      icon: const Icon(Icons.fullscreen, color: Colors.white),
+                      onPressed: _openFullscreen,
+                    ),
+                  ],
+                ),
+              ),
+            ),
         ],
       ),
     );
