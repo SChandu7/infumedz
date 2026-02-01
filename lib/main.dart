@@ -6,7 +6,6 @@ import 'package:image_picker/image_picker.dart';
 import 'package:flutter_file_dialog/flutter_file_dialog.dart';
 import 'package:flutter/services.dart';
 import 'dart:async';
-
 import 'package:infumedz/views.dart';
 
 void main() {
@@ -339,7 +338,8 @@ class _MainShellState extends State<MainShell> {
   final screens = const [
     HomePage(),
     LibraryPage(),
-    CartPage(),
+    MedicalStoreScreen(),
+
     FavouritesPage(),
     ProfilePage(),
   ];
@@ -1299,4 +1299,1450 @@ class ProfilePage extends StatelessWidget {
   const ProfilePage({super.key});
   @override
   Widget build(BuildContext context) => const Center(child: Text("Profile"));
+}
+
+class MedicalStoreScreen extends StatefulWidget {
+  const MedicalStoreScreen({super.key});
+
+  @override
+  State<MedicalStoreScreen> createState() => _MedicalStoreScreenState();
+}
+
+class _MedicalStoreScreenState extends State<MedicalStoreScreen> {
+  String selectedType = "Courses";
+  String selectedCategory = "MBBS";
+  final List<Map<String, dynamic>> wishlistItems = [];
+
+  final categories = ["MBBS", "MD/MS", "DM/DrNB"];
+
+  final courses = [
+    {
+      "title": "DM Cardiology – Complete Course",
+      "meta": "120 Videos • 40 PDFs • 6 Months",
+      "learners": "18.2K learners",
+      "price": "₹14,999",
+      "image": "assets/thumbnail1.avif",
+      "tag": "Bestseller",
+    },
+    {
+      "title": "MBBS Anatomy – Clinical Approach",
+      "meta": "90 Videos • 20 PDFs",
+      "learners": "12.4K learners",
+      "price": "₹6,499",
+      "image": "assets/thumbnail2.jpg",
+    },
+    {
+      "title": "MD Medicine – Clinical Q&A Series",
+      "learners": "37.9K learners",
+      "meta": "150 videos • Case discussions",
+      "price": "₹14,999",
+      "image": "assets/thumbnail3.webp",
+    },
+  ];
+
+  final books = [
+    {
+      "title": "General Medicine – Rapid Revision Notes",
+      "meta": "PDF Book • 780 Pages",
+      "learners": "22K readers",
+      "price": "₹1,499",
+      "image": "assets/thumbnail11.jpg",
+    },
+    {
+      "title": "Pathology – Case Based Learning",
+      "meta": "Illustrated PDF",
+      "learners": "9.8K readers",
+      "price": "₹999",
+      "image": "assets/thumbnail22.jpg",
+    },
+    {
+      "title": "Paediatrics – Rapid Review Handbook",
+      "learners": "23.1K readers",
+      "meta": "240 Pages • PDF • Quick revision",
+      "price": "₹1,899",
+      "image": "assets/thumbnail44.webp",
+    },
+  ];
+
+  double get cartTotal {
+    double total = 0;
+    for (var item in CartStore.items) {
+      final price =
+          double.tryParse(
+            item["price"].replaceAll("₹", "").replaceAll(",", ""),
+          ) ??
+          0;
+      total += price;
+    }
+    return total;
+  }
+
+  void _openFilterSheet() {
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) {
+        return Padding(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                "Filter Courses",
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 16),
+
+              const Text(
+                "Select Level",
+                style: TextStyle(fontWeight: FontWeight.w600),
+              ),
+
+              const SizedBox(height: 10),
+
+              Wrap(
+                spacing: 10,
+                children: ["MBBS", "MD/MS", "DM/DrNB"].map((level) {
+                  final active = selectedCategory == level;
+                  return ChoiceChip(
+                    label: Text(level),
+                    selected: active,
+                    selectedColor: const Color(0xFF0E5FD8),
+                    labelStyle: TextStyle(
+                      color: active ? Colors.white : Colors.black,
+                      fontWeight: FontWeight.w600,
+                    ),
+                    onSelected: (_) {
+                      setState(() => selectedCategory = level);
+                      Navigator.pop(context);
+                    },
+                  );
+                }).toList(),
+              ),
+
+              const SizedBox(height: 20),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  void _openCart(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      isDismissible: false,
+      backgroundColor: Colors.transparent,
+      builder: (_) => CartBottomSheet(
+        initialItems: CartStore.items,
+        onCartUpdated: (updated) {
+          setState(() {
+            CartStore.clear();
+            for (final item in updated) {
+              CartStore.add(item);
+            }
+          });
+        },
+      ),
+    );
+  }
+
+  void _openWishlist() {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      isDismissible: false,
+      backgroundColor: Colors.transparent,
+      builder: (_) => WishlistBottomSheet(
+        initialItems: wishlistItems,
+        onAddToCart: (item) {
+          CartStore.add(item);
+        },
+        onWishlistUpdated: (updated) {
+          setState(() {
+            wishlistItems
+              ..clear()
+              ..addAll(updated);
+          });
+        },
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final data = selectedType == "Courses" ? courses : books;
+
+    return Scaffold(
+      backgroundColor: const Color(0xFFF6F8FC),
+      appBar: AppBar(
+        backgroundColor: Colors.white,
+        elevation: 0.5,
+        title: const Text(
+          "Explore Learning",
+          style: TextStyle(
+            fontWeight: FontWeight.w700,
+            color: Color(0xFF1F3C68),
+          ),
+        ),
+        actions: [
+          /// ❤️ Wishlist
+          IconButton(
+            icon: const Icon(Icons.favorite_border, color: Color(0xFF0E5FD8)),
+            onPressed: _openWishlist,
+          ),
+
+          /// 🛒 Cart
+          Stack(
+            children: [
+              IconButton(
+                icon: const Icon(
+                  Icons.shopping_cart_outlined,
+                  color: Color(0xFF0E5FD8),
+                ),
+                onPressed: () => _openCart(context),
+              ),
+
+              if (CartStore.items.isNotEmpty)
+                Positioned(
+                  right: 6,
+                  top: 6,
+                  child: CircleAvatar(
+                    radius: 8,
+                    backgroundColor: Colors.red,
+                    child: Text(
+                      CartStore.items.length.toString(),
+                      style: const TextStyle(fontSize: 10, color: Colors.white),
+                    ),
+                  ),
+                ),
+            ],
+          ),
+        ],
+      ),
+
+      body: Column(
+        children: [
+          /// SEARCH BAR
+          Padding(
+            padding: const EdgeInsets.all(12),
+            child: Container(
+              height: 52,
+              padding: const EdgeInsets.symmetric(horizontal: 14),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(color: const Color(0xFFE2E8F0)),
+              ),
+              child: Row(
+                children: [
+                  const Icon(Icons.search, color: Color(0xFF0E5FD8)),
+                  const SizedBox(width: 10),
+                  const Expanded(
+                    child: TextField(
+                      decoration: InputDecoration(
+                        hintText: "Search courses, books, subjects…",
+                        border: InputBorder.none,
+                      ),
+                    ),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.tune, color: Color(0xFF0E5FD8)),
+                    onPressed: _openFilterSheet,
+                  ),
+                ],
+              ),
+            ),
+          ),
+
+          /// COURSE / BOOK TOGGLE
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 12),
+            child: Row(
+              children: ["Courses", "Books"].map((type) {
+                final active = selectedType == type;
+                return Expanded(
+                  child: GestureDetector(
+                    onTap: () => setState(() => selectedType = type),
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 250),
+                      height: 44,
+                      margin: const EdgeInsets.symmetric(horizontal: 4),
+                      decoration: BoxDecoration(
+                        color: active ? const Color(0xFF0E5FD8) : Colors.white,
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(color: const Color(0xFFE2E8F0)),
+                      ),
+                      child: Center(
+                        child: Text(
+                          type,
+                          style: TextStyle(
+                            color: active ? Colors.white : Colors.black87,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                );
+              }).toList(),
+            ),
+          ),
+          const SizedBox(height: 16),
+
+          /// CATEGORY FILTER
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+            child: Row(
+              children: [
+                const Icon(
+                  Icons.filter_alt_outlined,
+                  size: 16,
+                  color: Color(0xFF0E5FD8),
+                ),
+                const SizedBox(width: 6),
+                Text(
+                  "Showing $selectedType for ",
+                  style: const TextStyle(fontSize: 17, color: Colors.black54),
+                ),
+                Text(
+                  selectedCategory,
+                  style: const TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.bold,
+                    color: Color(0xFF0E5FD8),
+                  ),
+                ),
+              ],
+            ),
+          ),
+
+          /// LIST
+          Expanded(
+            child: ListView.builder(
+              padding: const EdgeInsets.all(12),
+              itemCount: data.length,
+              itemBuilder: (context, i) {
+                final item = data[i];
+                return _CourseListCard(
+                  data: item,
+                  isWishlisted: wishlistItems.contains(item),
+
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => CourseDetailScreen(data: item),
+                      ),
+                    );
+                  },
+
+                  onWishlist: () {
+                    setState(() {
+                      if (wishlistItems.contains(item)) {
+                        wishlistItems.remove(item);
+                      } else {
+                        wishlistItems.add(item);
+                      }
+                    });
+                  },
+
+                  onAddToCart: () {
+                    setState(() {
+                      if (!CartStore.items.contains(item)) {
+                        CartStore.add(item);
+                      }
+                    });
+
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text("Added to cart")),
+                    );
+                  },
+                );
+              },
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _CourseListCard extends StatelessWidget {
+  final Map<String, dynamic> data;
+  final VoidCallback onTap;
+  final VoidCallback? onWishlist;
+  final VoidCallback? onAddToCart;
+  final bool isWishlisted;
+
+  const _CourseListCard({
+    super.key,
+    required this.data,
+    required this.onTap,
+    this.onWishlist,
+    this.onAddToCart,
+    this.isWishlisted = false,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(14),
+        child: Container(
+          margin: const EdgeInsets.only(bottom: 14),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(4),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.05),
+                blurRadius: 10,
+                offset: const Offset(0, 5),
+              ),
+            ],
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              /// 🔹 THUMBNAIL (REDUCED HEIGHT)
+              Stack(
+                children: [
+                  ClipRRect(
+                    borderRadius: const BorderRadius.vertical(
+                      top: Radius.circular(4),
+                    ),
+                    child: Image.asset(
+                      data["image"],
+                      height: 160,
+                      width: double.infinity,
+                      fit: BoxFit.cover,
+                    ),
+                  ),
+
+                  /// ▶ Play icon
+                  const Positioned.fill(
+                    child: Center(
+                      child: Icon(
+                        Icons.play_circle_fill,
+                        size: 48,
+                        color: Colors.white70,
+                      ),
+                    ),
+                  ),
+
+                  /// ❤️ Wishlist
+                  Positioned(
+                    top: 8,
+                    right: 8,
+                    child: GestureDetector(
+                      onTap: onWishlist,
+                      child: Container(
+                        padding: const EdgeInsets.all(6),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.9),
+                          shape: BoxShape.circle,
+                        ),
+                        child: Icon(
+                          isWishlisted ? Icons.favorite : Icons.favorite_border,
+                          size: 18,
+                          color: isWishlisted ? Colors.red : Colors.black54,
+                        ),
+                      ),
+                    ),
+                  ),
+
+                  /// 🏷 Tag
+                  if (data["tag"] != null)
+                    Positioned(
+                      top: 8,
+                      left: 8,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 3,
+                        ),
+                        decoration: BoxDecoration(
+                          color: Colors.orange,
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: Text(
+                          data["tag"],
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 10,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+
+              /// 🔹 DETAILS
+              Padding(
+                padding: const EdgeInsets.fromLTRB(12, 6, 12, 6),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    /// TITLE
+                    Text(
+                      data["title"],
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w700,
+                        color: Color(0xFF1F3C68),
+                      ),
+                    ),
+
+                    const SizedBox(height: 4),
+
+                    /// Cost + ⭐ RATING + 👥 LEARNERS (SINGLE ROW)
+                    Row(
+                      children: [
+                        /// ⭐ LEFT — Rating
+                        Expanded(
+                          child: Row(
+                            children: const [
+                              Icon(Icons.star, color: Colors.amber, size: 16),
+                              SizedBox(width: 4),
+                              Text(
+                                "4.8",
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+
+                        /// 👥 CENTER — Learners
+                        Expanded(
+                          child: Text(
+                            data["learners"] ?? "",
+                            textAlign: TextAlign.center,
+                            style: const TextStyle(
+                              fontSize: 12,
+                              color: Colors.black54,
+                            ),
+                          ),
+                        ),
+
+                        /// 💰 RIGHT — Price
+                        Expanded(
+                          child: Text(
+                            data["price"],
+                            textAlign: TextAlign.right,
+                            style: const TextStyle(
+                              fontSize: 15,
+                              fontWeight: FontWeight.bold,
+                              color: Color(0xFF0E5FD8),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+
+                    /// PRICE + CART
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class CartStore {
+  static final List<Map<String, dynamic>> _items = [];
+
+  static List<Map<String, dynamic>> get items => List.unmodifiable(_items);
+
+  /// returns true if added, false if already exists
+  static bool add(Map<String, dynamic> item) {
+    final exists = _items.any((e) => e["title"] == item["title"]);
+
+    if (exists) return false;
+
+    _items.add(item);
+    return true;
+  }
+
+  static void remove(Map<String, dynamic> item) {
+    _items.removeWhere((e) => e["title"] == item["title"]);
+  }
+
+  static void clear() {
+    _items.clear();
+  }
+
+  static bool contains(Map<String, dynamic> item) {
+    return _items.any((e) => e["title"] == item["title"]);
+  }
+
+  static double total() {
+    double sum = 0;
+
+    for (final item in _items) {
+      final raw = item["price"];
+      if (raw == null) continue;
+
+      final cleaned = raw.toString().replaceAll("₹", "").replaceAll(",", "");
+
+      sum += double.tryParse(cleaned) ?? 0;
+    }
+
+    return sum;
+  }
+}
+
+class CourseDetailScreen extends StatelessWidget {
+  final Map<String, dynamic> data;
+
+  const CourseDetailScreen({super.key, required this.data});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: const Color(0xFFF6F8FC),
+
+      /// 🔹 BOTTOM ACTION BAR
+      bottomNavigationBar: Container(
+        padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.08),
+              blurRadius: 12,
+              offset: const Offset(0, -2),
+            ),
+          ],
+        ),
+        child: Row(
+          children: [
+            /// ❤️ Wishlist
+            Container(
+              height: 48,
+              width: 48,
+              decoration: BoxDecoration(
+                color: const Color(0xFF0E5FD8).withOpacity(0.1),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: const Icon(
+                Icons.favorite_border,
+                color: Color(0xFF0E5FD8),
+              ),
+            ),
+
+            const SizedBox(width: 12),
+
+            /// 🛒 Add to Cart
+            Expanded(
+              child: ElevatedButton(
+                onPressed: () {
+                  CartStore.add(data);
+
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text("Added to cart")),
+                  );
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF0E5FD8),
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+                child: Text(
+                  "Add to Cart • ${data["price"]}",
+                  style: const TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+
+      body: CustomScrollView(
+        slivers: [
+          /// 🔹 HERO APP BAR
+          SliverAppBar(
+            backgroundColor: Colors.black,
+            expandedHeight: 260,
+            pinned: true,
+            elevation: 0,
+            leading: IconButton(
+              icon: const Icon(Icons.arrow_back),
+              onPressed: () => Navigator.pop(context),
+            ),
+            flexibleSpace: FlexibleSpaceBar(
+              background: Stack(
+                fit: StackFit.expand,
+                children: [
+                  Image.asset(data["image"], fit: BoxFit.cover),
+
+                  /// Overlay gradient
+                  Container(
+                    decoration: const BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.bottomCenter,
+                        end: Alignment.topCenter,
+                        colors: [Colors.black87, Colors.transparent],
+                      ),
+                    ),
+                  ),
+
+                  /// ▶ Play Button
+                  const Center(
+                    child: Icon(
+                      Icons.play_circle_fill,
+                      size: 72,
+                      color: Colors.white70,
+                    ),
+                  ),
+
+                  /// 🏷 Tag
+                  if (data["tag"] != null)
+                    Positioned(
+                      top: 100,
+                      left: 16,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 10,
+                          vertical: 5,
+                        ),
+                        decoration: BoxDecoration(
+                          color: Colors.orange,
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: Text(
+                          data["tag"],
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+            ),
+          ),
+
+          /// 🔹 CONTENT
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(16, 18, 16, 120),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  /// TITLE
+                  Text(
+                    data["title"],
+                    style: const TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.w800,
+                      color: Color(0xFF1F3C68),
+                    ),
+                  ),
+
+                  const SizedBox(height: 10),
+
+                  /// RATING + LEARNERS
+                  Row(
+                    children: [
+                      const Icon(Icons.star, color: Colors.amber, size: 18),
+                      const SizedBox(width: 4),
+                      const Text(
+                        "4.8",
+                        style: TextStyle(fontWeight: FontWeight.w600),
+                      ),
+                      const SizedBox(width: 6),
+                      const Text(
+                        "(12,400 ratings)",
+                        style: TextStyle(fontSize: 12),
+                      ),
+                      const SizedBox(width: 12),
+                      Text(
+                        data["learners"] ?? "",
+                        style: const TextStyle(
+                          fontSize: 12,
+                          color: Colors.black54,
+                        ),
+                      ),
+                    ],
+                  ),
+
+                  const SizedBox(height: 14),
+
+                  /// META INFO
+                  Wrap(
+                    spacing: 18,
+                    runSpacing: 8,
+                    children: const [
+                      _MetaItem(icon: Icons.language, text: "English"),
+                      _MetaItem(
+                        icon: Icons.update,
+                        text: "Last updated Jan 2026",
+                      ),
+                      _MetaItem(icon: Icons.school, text: "Medical Education"),
+                    ],
+                  ),
+
+                  const SizedBox(height: 20),
+
+                  /// CREATED BY
+                  const Text(
+                    "Created by",
+                    style: TextStyle(fontWeight: FontWeight.w700, fontSize: 14),
+                  ),
+                  const SizedBox(height: 6),
+                  const Text(
+                    "InfuMedz Academic Faculty",
+                    style: TextStyle(
+                      fontSize: 13,
+                      color: Color(0xFF0E5FD8),
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+
+                  const SizedBox(height: 24),
+
+                  /// DESCRIPTION
+                  const Text(
+                    "About this course",
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+                  ),
+                  const SizedBox(height: 8),
+                  const Text(
+                    "This comprehensive medical course is designed to bridge the gap between theoretical foundations and real-world clinical practice. The curriculum is carefully structured by experienced medical professionals to help students, residents, and specialists gain confidence in diagnosis, decision-making, and patient care.\n\nYou will learn through high-quality video lectures, clinical case discussions, and concise medical notes curated specifically for exam preparation and real-life application.",
+                    style: TextStyle(
+                      fontSize: 14,
+                      height: 1.6,
+                      color: Colors.black87,
+                    ),
+                  ),
+
+                  const SizedBox(height: 24),
+
+                  /// WHAT YOU’LL LEARN
+                  const Text(
+                    "What you'll learn",
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+                  ),
+                  const SizedBox(height: 10),
+
+                  const _BulletPoint(
+                    text:
+                        "Develop strong conceptual clarity with clinical relevance",
+                  ),
+                  const _BulletPoint(
+                    text: "Understand diagnostic and treatment strategies",
+                  ),
+                  const _BulletPoint(
+                    text:
+                        "Prepare effectively for university & competitive exams",
+                  ),
+                  const _BulletPoint(
+                    text: "Access curated PDFs, videos, and revision materials",
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _MetaItem extends StatelessWidget {
+  final IconData icon;
+  final String text;
+
+  const _MetaItem({required this.icon, required this.text});
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(icon, size: 16, color: Colors.black54),
+        const SizedBox(width: 6),
+        Text(text, style: const TextStyle(fontSize: 12)),
+      ],
+    );
+  }
+}
+
+class _BulletPoint extends StatelessWidget {
+  final String text;
+
+  const _BulletPoint({required this.text});
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 6),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Icon(Icons.check_circle, size: 18, color: Color(0xFF0E5FD8)),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              text,
+              style: const TextStyle(fontSize: 14, height: 1.5),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class CartBottomSheet extends StatefulWidget {
+  final List<Map<String, dynamic>> initialItems;
+  final ValueChanged<List<Map<String, dynamic>>>? onCartUpdated;
+
+  const CartBottomSheet({
+    super.key,
+    required this.initialItems,
+    this.onCartUpdated,
+  });
+
+  @override
+  State<CartBottomSheet> createState() => _CartBottomSheetState();
+}
+
+class _CartBottomSheetState extends State<CartBottomSheet> {
+  late List<Map<String, dynamic>> _cartItems;
+  final GlobalKey<AnimatedListState> _listKey = GlobalKey();
+  bool _processing = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _cartItems = List.from(widget.initialItems);
+  }
+
+  double get total {
+    return _cartItems.fold(0.0, (sum, item) {
+      final raw = item["price"];
+      if (raw == null) return sum;
+
+      final cleaned = raw.toString().replaceAll("₹", "").replaceAll(",", "");
+
+      return sum + (double.tryParse(cleaned) ?? 0);
+    });
+  }
+
+  void _removeItem(int index) {
+    if (_processing) return;
+    _processing = true;
+
+    final removedItem = _cartItems[index];
+
+    _listKey.currentState?.removeItem(
+      index,
+      (context, animation) => SizeTransition(
+        sizeFactor: animation,
+        child: _CartItemTile(item: removedItem),
+      ),
+      duration: const Duration(milliseconds: 280),
+    );
+
+    setState(() {
+      _cartItems.removeAt(index);
+    });
+
+    widget.onCartUpdated?.call(List.from(_cartItems));
+
+    Future.delayed(const Duration(milliseconds: 300), () {
+      _processing = false;
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return WillPopScope(
+      onWillPop: () async => false,
+      child: Container(
+        height: MediaQuery.of(context).size.height * 0.93,
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(22)),
+        ),
+        child: Column(
+          children: [
+            /// 🔹 HEADER
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 14, 10, 14),
+              child: Row(
+                children: [
+                  const Expanded(
+                    child: Text(
+                      "Your Cart",
+                      style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.close, size: 26),
+                    onPressed: () => Navigator.pop(context),
+                  ),
+                ],
+              ),
+            ),
+
+            const Divider(height: 1),
+
+            /// 🔹 CART LIST
+            Expanded(
+              child: _cartItems.isEmpty
+                  ? const _EmptyCartView()
+                  : AnimatedList(
+                      key: _listKey,
+                      initialItemCount: _cartItems.length,
+                      padding: const EdgeInsets.all(14),
+                      itemBuilder: (context, index, animation) {
+                        return SizeTransition(
+                          sizeFactor: animation,
+                          child: _CartItemTile(
+                            item: _cartItems[index],
+                            onDelete: () => _removeItem(index),
+                          ),
+                        );
+                      },
+                    ),
+            ),
+
+            /// 🔹 BILLING
+            _BillingSection(total: total),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _CartItemTile extends StatelessWidget {
+  final Map<String, dynamic> item;
+  final VoidCallback? onDelete;
+
+  const _CartItemTile({required this.item, this.onDelete});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF7F9FC),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: const Color(0xFFE2E8F0)),
+      ),
+      child: Row(
+        children: [
+          ClipRRect(
+            borderRadius: BorderRadius.circular(8),
+            child: Image.asset(
+              item["image"],
+              width: 60,
+              height: 50,
+              fit: BoxFit.cover,
+            ),
+          ),
+
+          const SizedBox(width: 12),
+
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  item["title"],
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w600,
+                    fontSize: 14,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  item["price"],
+                  style: const TextStyle(
+                    fontWeight: FontWeight.bold,
+                    color: Color(0xFF0E5FD8),
+                  ),
+                ),
+              ],
+            ),
+          ),
+
+          IconButton(
+            icon: const Icon(Icons.delete_outline, color: Colors.red),
+            onPressed: onDelete,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _BillingSection extends StatelessWidget {
+  final double total;
+
+  const _BillingSection({required this.total});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.fromLTRB(16, 14, 16, 18),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.08),
+            blurRadius: 16,
+            offset: const Offset(0, -2),
+          ),
+        ],
+      ),
+      child: Column(
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Text(
+                "Total Amount",
+                style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
+              ),
+              AnimatedSwitcher(
+                duration: const Duration(milliseconds: 250),
+                child: Text(
+                  "₹${total.toStringAsFixed(0)}",
+                  key: ValueKey(total),
+                  style: const TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                    color: Color(0xFF0E5FD8),
+                  ),
+                ),
+              ),
+            ],
+          ),
+
+          const SizedBox(height: 14),
+
+          ElevatedButton(
+            onPressed: () {
+              // backend checkout later
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF0E5FD8),
+              padding: const EdgeInsets.symmetric(vertical: 16),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(14),
+              ),
+            ),
+            child: const Text(
+              "Proceed to Checkout",
+              style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _EmptyCartView extends StatelessWidget {
+  const _EmptyCartView();
+
+  @override
+  Widget build(BuildContext context) {
+    return const Center(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(Icons.shopping_cart_outlined, size: 60, color: Colors.black26),
+          SizedBox(height: 12),
+          Text(
+            "Your cart is empty",
+            style: TextStyle(fontSize: 14, color: Colors.black54),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class WishlistBottomSheet extends StatefulWidget {
+  final List<Map<String, dynamic>> initialItems;
+  final Function(Map<String, dynamic>) onAddToCart;
+  final ValueChanged<List<Map<String, dynamic>>>? onWishlistUpdated;
+
+  const WishlistBottomSheet({
+    super.key,
+    required this.initialItems,
+    required this.onAddToCart,
+    this.onWishlistUpdated,
+  });
+
+  @override
+  State<WishlistBottomSheet> createState() => _WishlistBottomSheetState();
+}
+
+class _WishlistBottomSheetState extends State<WishlistBottomSheet> {
+  late List<Map<String, dynamic>> _wishlistItems;
+  final GlobalKey<AnimatedListState> _listKey = GlobalKey();
+  bool _processing = false; // prevents double taps
+
+  @override
+  void initState() {
+    super.initState();
+    _wishlistItems = List.from(widget.initialItems);
+  }
+
+  void _removeFromWishlist(int index) {
+    final removedItem = _wishlistItems[index];
+
+    _listKey.currentState?.removeItem(
+      index,
+      (context, animation) => SizeTransition(
+        sizeFactor: animation,
+        child: _WishlistItemTile(item: removedItem),
+      ),
+      duration: const Duration(milliseconds: 280),
+    );
+
+    setState(() {
+      _wishlistItems.removeAt(index);
+    });
+
+    widget.onWishlistUpdated?.call(List.from(_wishlistItems));
+  }
+
+  void _moveToCart(int index) async {
+    if (_processing) return;
+    _processing = true;
+
+    final item = _wishlistItems[index];
+
+    widget.onAddToCart(item);
+    _removeFromWishlist(index);
+
+    ScaffoldMessenger.of(context).clearSnackBars();
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text("Moved to cart"),
+        backgroundColor: Color(0xFF0E5FD8),
+        duration: Duration(milliseconds: 900),
+      ),
+    );
+
+    await Future.delayed(const Duration(milliseconds: 300));
+    _processing = false;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return WillPopScope(
+      onWillPop: () async => false,
+      child: Container(
+        height: MediaQuery.of(context).size.height * 0.9,
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(22)),
+        ),
+        child: Column(
+          children: [
+            /// 🔹 HEADER
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 14, 10, 14),
+              child: Row(
+                children: [
+                  const Expanded(
+                    child: Text(
+                      "Wishlist",
+                      style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.close, size: 26),
+                    onPressed: () => Navigator.pop(context),
+                  ),
+                ],
+              ),
+            ),
+
+            const Divider(height: 1),
+
+            /// 🔹 LIST
+            Expanded(
+              child: _wishlistItems.isEmpty
+                  ? const _EmptyWishlistView()
+                  : AnimatedList(
+                      key: _listKey,
+                      padding: const EdgeInsets.all(14),
+                      initialItemCount: _wishlistItems.length,
+                      itemBuilder: (context, index, animation) {
+                        return SizeTransition(
+                          sizeFactor: animation,
+                          child: _WishlistItemTile(
+                            item: _wishlistItems[index],
+                            onAddToCart: () => _moveToCart(index),
+                            onRemove: () => _removeFromWishlist(index),
+                          ),
+                        );
+                      },
+                    ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _WishlistItemTile extends StatelessWidget {
+  final Map<String, dynamic> item;
+  final VoidCallback? onAddToCart;
+  final VoidCallback? onRemove;
+
+  const _WishlistItemTile({
+    required this.item,
+    this.onAddToCart,
+    this.onRemove,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 14),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF7F9FC),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFFE2E8F0)),
+      ),
+      child: Row(
+        children: [
+          /// IMAGE
+          ClipRRect(
+            borderRadius: BorderRadius.circular(10),
+            child: Image.asset(
+              item["image"],
+              width: 64,
+              height: 56,
+              fit: BoxFit.cover,
+            ),
+          ),
+
+          const SizedBox(width: 12),
+
+          /// DETAILS
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  item["title"],
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w600,
+                    fontSize: 14,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  item["price"],
+                  style: const TextStyle(
+                    fontWeight: FontWeight.bold,
+                    color: Color(0xFF0E5FD8),
+                  ),
+                ),
+              ],
+            ),
+          ),
+
+          /// ACTIONS
+          Column(
+            children: [
+              InkWell(
+                onTap: onAddToCart,
+                borderRadius: BorderRadius.circular(10),
+                child: Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF0E5FD8).withOpacity(0.12),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: const Icon(
+                    Icons.shopping_cart_outlined,
+                    size: 18,
+                    color: Color(0xFF0E5FD8),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 6),
+              InkWell(
+                onTap: onRemove,
+                child: const Icon(
+                  Icons.delete_outline,
+                  size: 18,
+                  color: Colors.red,
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _EmptyWishlistView extends StatelessWidget {
+  const _EmptyWishlistView();
+
+  @override
+  Widget build(BuildContext context) {
+    return const Center(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(Icons.favorite_border, size: 60, color: Colors.black26),
+          SizedBox(height: 12),
+          Text(
+            "Your wishlist is empty",
+            style: TextStyle(fontSize: 14, color: Colors.black54),
+          ),
+        ],
+      ),
+    );
+  }
 }
