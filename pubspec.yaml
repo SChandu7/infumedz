@@ -44,6 +44,7 @@ dependencies:
   dio: ^5.9.1
   chewie: ^1.7.4
   provider: ^6.0.5
+  file_picker: ^10.3.10
 
 
 

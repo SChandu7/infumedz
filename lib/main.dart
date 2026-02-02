@@ -8,6 +8,7 @@ import 'package:flutter/services.dart';
 import 'dart:async';
 import 'package:infumedz/views.dart';
 import 'package:video_player/video_player.dart';
+import 'admin.dart';
 
 void main() {
   runApp(const MedicalLearningApp());
@@ -341,8 +342,7 @@ class _MainShellState extends State<MainShell> {
     MedicalStoreScreen(),
     LibraryPage(),
 
-    FavouritesPage(),
-    ProfilePage(),
+    AdminPanelHome(),
   ];
 
   @override
@@ -362,7 +362,7 @@ class _MainShellState extends State<MainShell> {
             icon: Icon(Icons.shopping_cart),
             label: 'Library',
           ),
-          NavigationDestination(icon: Icon(Icons.person), label: 'Profile'),
+          NavigationDestination(icon: Icon(Icons.person), label: 'Admin'),
         ],
       ),
     );
