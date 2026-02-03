@@ -10,6 +10,14 @@ import 'package:infumedz/views.dart';
 import 'package:video_player/video_player.dart';
 import 'admin.dart';
 
+class ApiConfig {
+  static const base = "http://13.203.219.206:8000";
+
+  static const categories = "$base/api/infumedz/categories/";
+  static const courses = "$base/api/infumedz/courses/";
+  static const books = "$base/api/infumedz/books/";
+}
+
 void main() {
   runApp(const MedicalLearningApp());
 }
@@ -956,6 +964,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
               meta: course["meta"]!,
               price: course["price"]!,
               thumbnail: course["thumbnail"]!,
+              onTap: () {},
             );
           }),
           const SizedBox(height: 12),
@@ -990,6 +999,7 @@ class YoutubeStyleCourseCard extends StatelessWidget {
   final String meta;
   final String price;
   final String thumbnail;
+  final VoidCallback onTap;
 
   const YoutubeStyleCourseCard({
     super.key,
@@ -998,6 +1008,7 @@ class YoutubeStyleCourseCard extends StatelessWidget {
     required this.meta,
     required this.price,
     required this.thumbnail,
+    required this.onTap,
   });
 
   @override
@@ -1653,205 +1664,21 @@ class MedicalStoreScreen extends StatefulWidget {
 
 class _MedicalStoreScreenState extends State<MedicalStoreScreen> {
   String selectedType = "Courses";
-  late String selectedCategory;
   final List<Map<String, dynamic>> wishlistItems = [];
 
-  final categories = ["MBBS", "MD/MS", "DM/DrNB"];
+  // backend data
+  List<Map<String, dynamic>> categories = [];
+  List<Map<String, dynamic>> courses = [];
+  List<Map<String, dynamic>> books = [];
 
-  final courses = [
-    // 🔹 DM / Super-specialty
-    {
-      "title": "DM Cardiology – Complete Course",
-      "meta": "120 Videos • 40 PDFs • 6 Months",
-      "learners": "18.2K learners",
-      "price": "₹14,999",
-      "image": "assets/thumbnail1.avif",
-      "tag": "Bestseller",
-    },
-    {
-      "title": "DM Neurology – Clinical Practice Mastery",
-      "meta": "110 Videos • EEG • Case PDFs",
-      "learners": "9.4K learners",
-      "price": "₹16,499",
-      "image": "assets/thumbnail2.jpg",
-      "tag": "Advanced",
-    },
-    {
-      "title": "DM Endocrinology – Case Based Learning",
-      "meta": "85 Videos • Real-life cases",
-      "learners": "7.1K learners",
-      "price": "₹13,999",
-      "image": "assets/thumbnail3.webp",
-    },
+  // selection state
+  int? selectedCategoryId;
+  String selectedCategoryName = "MBBS";
 
-    // 🔹 MD / MS
-    {
-      "title": "MD Medicine – Clinical Q&A Series",
-      "meta": "150 Videos • Case discussions",
-      "learners": "37.9K learners",
-      "price": "₹14,999",
-      "image": "assets/thumbnail1.avif",
-      "tag": "Top Rated",
-    },
-    {
-      "title": "MD Pediatrics – Growth & Development",
-      "meta": "95 Videos • Neonatal cases",
-      "learners": "21.3K learners",
-      "price": "₹11,499",
-      "image": "assets/thumbnail2.jpg",
-    },
-    {
-      "title": "MS General Surgery – OR to Ward",
-      "meta": "100 Videos • Surgical techniques",
-      "learners": "19.8K learners",
-      "price": "₹12,999",
-      "image": "assets/thumbnail3.webp",
-    },
-    {
-      "title": "MD Radiology – Imaging Simplified",
-      "meta": "CT • MRI • X-Ray • 200+ Cases",
-      "learners": "26.7K learners",
-      "price": "₹15,999",
-      "image": "assets/thumbnail1.avif",
-      "tag": "High Demand",
-    },
-
-    // 🔹 MBBS
-    {
-      "title": "MBBS Anatomy – Clinical Approach",
-      "meta": "90 Videos • 20 PDFs",
-      "learners": "12.4K learners",
-      "price": "₹6,499",
-      "image": "assets/thumbnail2.jpg",
-    },
-    {
-      "title": "MBBS Physiology – Concept to Clinic",
-      "meta": "70 Videos • Diagrams • PDFs",
-      "learners": "14.6K learners",
-      "price": "₹5,999",
-      "image": "assets/thumbnail3.webp",
-    },
-    {
-      "title": "MBBS Pathology – Case Based Learning",
-      "meta": "80 Videos • Histology Slides",
-      "learners": "16.2K learners",
-      "price": "₹6,999",
-      "image": "assets/thumbnail1.avif",
-    },
-
-    // 🔹 Entrance / Competitive
-    {
-      "title": "NEET PG – Integrated Preparation",
-      "meta": "300+ Videos • MCQs • PDFs",
-      "learners": "48.5K learners",
-      "price": "₹19,999",
-      "image": "assets/thumbnail2.jpg",
-      "tag": "Most Popular",
-    },
-    {
-      "title": "INICET – High Yield Topics",
-      "meta": "120 Videos • PYQs Explained",
-      "learners": "28.9K learners",
-      "price": "₹12,499",
-      "image": "assets/thumbnail3.webp",
-    },
-  ];
-  final books = [
-    // 🔹 Core Medicine
-    {
-      "title": "General Medicine – Rapid Revision Notes",
-      "meta": "PDF Book • 780 Pages",
-      "learners": "22K readers",
-      "price": "₹1,499",
-      "image": "assets/thumbnail11.jpg",
-      "tag": "Bestseller",
-    },
-    {
-      "title": "Pathology – Case Based Learning",
-      "meta": "Illustrated PDF • Histopathology",
-      "learners": "9.8K readers",
-      "price": "₹999",
-      "image": "assets/thumbnail22.jpg",
-    },
-    {
-      "title": "Paediatrics – Rapid Review Handbook",
-      "meta": "240 Pages • PDF • Quick Revision",
-      "learners": "23.1K readers",
-      "price": "₹1,899",
-      "image": "assets/thumbnail44.webp",
-    },
-
-    // 🔹 MBBS Subjects
-    {
-      "title": "Anatomy – Clinical Anatomy Atlas",
-      "meta": "High-Yield Diagrams • PDF",
-      "learners": "18.4K readers",
-      "price": "₹1,299",
-      "image": "assets/thumbnail33.jpg",
-    },
-    {
-      "title": "Physiology – Concept Review Notes",
-      "meta": "Flowcharts • Tables • PDF",
-      "learners": "16.8K readers",
-      "price": "₹1,199",
-      "image": "assets/thumbnail11.jpg",
-    },
-    {
-      "title": "Pharmacology – Drug Classification Handbook",
-      "meta": "Charts • Mechanisms • PDF",
-      "learners": "21.2K readers",
-      "price": "₹1,099",
-      "image": "assets/thumbnail22.jpg",
-      "tag": "Exam Favorite",
-    },
-    {
-      "title": "Microbiology – Rapid Revision Notes",
-      "meta": "Flowcharts • Mnemonics • PDF",
-      "learners": "14.5K readers",
-      "price": "₹999",
-      "image": "assets/thumbnail33.jpg",
-    },
-
-    // 🔹 Surgery / Ortho / OBG
-    {
-      "title": "General Surgery – Case Based Review",
-      "meta": "Clinical Scenarios • PDF",
-      "learners": "19.3K readers",
-      "price": "₹1,599",
-      "image": "assets/thumbnail44.webp",
-    },
-    {
-      "title": "Orthopaedics – Exam Oriented Notes",
-      "meta": "X-Ray Based • PDF",
-      "learners": "11.9K readers",
-      "price": "₹1,399",
-      "image": "assets/thumbnail11.jpg",
-    },
-    {
-      "title": "Obstetrics & Gynecology – High Yield Review",
-      "meta": "Flowcharts • Algorithms • PDF",
-      "learners": "17.6K readers",
-      "price": "₹1,699",
-      "image": "assets/thumbnail22.jpg",
-    },
-
-    // 🔹 Competitive Exams
-    {
-      "title": "NEET PG – High Yield Notes",
-      "meta": "MCQ Focused • PDF",
-      "learners": "42.8K readers",
-      "price": "₹2,499",
-      "image": "assets/thumbnail33.jpg",
-      "tag": "Most Popular",
-    },
-    {
-      "title": "INICET – Previous Year Questions Explained",
-      "meta": "Topic-wise PYQs • PDF",
-      "learners": "29.7K readers",
-      "price": "₹1,999",
-      "image": "assets/thumbnail44.webp",
-    },
-  ];
+  // loading states
+  bool loadingCategories = true;
+  bool loadingCourses = true;
+  bool loadingBooks = true;
 
   double get cartTotal {
     double total = 0;
@@ -1869,7 +1696,52 @@ class _MedicalStoreScreenState extends State<MedicalStoreScreen> {
   @override
   void initState() {
     super.initState();
-    selectedCategory = widget.initialCategory; // 👈 IMPORTANT
+    selectedCategoryName = widget.initialCategory;
+
+    fetchCategories();
+    fetchCourses();
+    fetchBooks();
+  }
+
+  Future<void> fetchCategories() async {
+    final res = await http.get(Uri.parse(ApiConfig.categories));
+    if (res.statusCode == 200) {
+      final data = List<Map<String, dynamic>>.from(jsonDecode(res.body));
+
+      setState(() {
+        categories = data;
+
+        // auto select initial category
+        final match = data.firstWhere(
+          (c) => c["name"] == selectedCategoryName,
+          orElse: () => data.first,
+        );
+
+        selectedCategoryId = match["id"];
+        selectedCategoryName = match["name"];
+        loadingCategories = false;
+      });
+    }
+  }
+
+  Future<void> fetchCourses() async {
+    final res = await http.get(Uri.parse(ApiConfig.courses));
+    if (res.statusCode == 200) {
+      setState(() {
+        courses = List<Map<String, dynamic>>.from(jsonDecode(res.body));
+        loadingCourses = false;
+      });
+    }
+  }
+
+  Future<void> fetchBooks() async {
+    final res = await http.get(Uri.parse(ApiConfig.books));
+    if (res.statusCode == 200) {
+      setState(() {
+        books = List<Map<String, dynamic>>.from(jsonDecode(res.body));
+        loadingBooks = false;
+      });
+    }
   }
 
   void _openFilterSheet() {
@@ -1901,7 +1773,7 @@ class _MedicalStoreScreenState extends State<MedicalStoreScreen> {
               Wrap(
                 spacing: 10,
                 children: ["MBBS", "MD/MS", "DM/DrNB"].map((level) {
-                  final active = selectedCategory == level;
+                  final active = selectedCategoryName == level;
                   return ChoiceChip(
                     label: Text(level),
                     selected: active,
@@ -1911,7 +1783,9 @@ class _MedicalStoreScreenState extends State<MedicalStoreScreen> {
                       fontWeight: FontWeight.w600,
                     ),
                     onSelected: (_) {
-                      setState(() => selectedCategory = level);
+                      setState(() {
+                        selectedCategoryName = level;
+                      });
                       Navigator.pop(context);
                     },
                   );
@@ -1970,8 +1844,15 @@ class _MedicalStoreScreenState extends State<MedicalStoreScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final data = selectedType == "Courses" ? courses : books;
+    final rawData = selectedType == "Courses" ? courses : books;
 
+    final data = rawData
+        .where((item) => item["category_name"] == selectedCategoryName)
+        .toList();
+
+    if (loadingCategories || loadingCourses || loadingBooks) {
+      return const Center(child: CircularProgressIndicator());
+    }
     return Scaffold(
       backgroundColor: const Color(0xFFF6F8FC),
       appBar: AppBar(
@@ -2105,7 +1986,7 @@ class _MedicalStoreScreenState extends State<MedicalStoreScreen> {
                   style: const TextStyle(fontSize: 17, color: Colors.black54),
                 ),
                 Text(
-                  selectedCategory,
+                  selectedCategoryName,
                   style: const TextStyle(
                     fontSize: 15,
                     fontWeight: FontWeight.bold,
@@ -2124,7 +2005,14 @@ class _MedicalStoreScreenState extends State<MedicalStoreScreen> {
               itemBuilder: (context, i) {
                 final item = data[i];
                 return _CourseListCard(
-                  data: item,
+                  data: {
+                    "title": item["title"],
+                    "image": item["thumbnail_url"],
+                    "price": "₹${item["price"]}",
+                    "learners": item["learners"] ?? "",
+                    "videos": item["videos"] ?? [],
+                  },
+
                   isWishlisted: wishlistItems.contains(item),
 
                   onTap: () {
@@ -2174,7 +2062,7 @@ class _CourseListCard extends StatelessWidget {
   final VoidCallback? onAddToCart;
   final bool isWishlisted;
 
-  const _CourseListCard({
+  _CourseListCard({
     super.key,
     required this.data,
     required this.onTap,
@@ -2213,11 +2101,13 @@ class _CourseListCard extends StatelessWidget {
                     borderRadius: const BorderRadius.vertical(
                       top: Radius.circular(4),
                     ),
-                    child: Image.asset(
+                    child: Image.network(
                       data["image"],
                       height: 160,
                       width: double.infinity,
                       fit: BoxFit.cover,
+                      errorBuilder: (_, __, ___) =>
+                          Container(color: Colors.grey.shade300),
                     ),
                   ),
 
@@ -2248,6 +2138,55 @@ class _CourseListCard extends StatelessWidget {
                           isWishlisted ? Icons.favorite : Icons.favorite_border,
                           size: 18,
                           color: isWishlisted ? Colors.red : Colors.black54,
+                        ),
+                      ),
+                    ),
+                  ),
+
+                  /// 🎬 VIDEO COUNT BADGE
+                  if (true)
+                    Positioned(
+                      bottom: 8,
+                      left: 8,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 4,
+                        ),
+                        decoration: BoxDecoration(
+                          color: Colors.black.withOpacity(0.7),
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                        child: Text(
+                          "${((data["videos"] as List).length)} videos",
+
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 11,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                    ),
+                  Positioned(
+                    bottom: 8,
+                    left: 8,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 4,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Colors.black.withOpacity(0.7),
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                      child: Text(
+                        "${data["videoCount"]} videos",
+
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 11,
+                          fontWeight: FontWeight.w600,
                         ),
                       ),
                     ),
@@ -2402,10 +2341,12 @@ class CartStore {
   }
 }
 
+// ignore: must_be_immutable
 class CourseDetailScreen extends StatefulWidget {
   final Map<String, dynamic> data;
+  List<Map<String, dynamic>> videos = []; // ✅ FIX
 
-  const CourseDetailScreen({super.key, required this.data});
+  CourseDetailScreen({super.key, required this.data});
 
   @override
   State<CourseDetailScreen> createState() => _CourseDetailScreenState();
@@ -2413,6 +2354,15 @@ class CourseDetailScreen extends StatefulWidget {
 
 class _CourseDetailScreenState extends State<CourseDetailScreen> {
   bool isPlaying = false;
+  @override
+  void initState() {
+    // TODO: implement initState
+
+    super.initState();
+    widget.videos = List<Map<String, dynamic>>.from(
+      widget.data["videos"] ?? [],
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -2468,7 +2418,7 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
                   ),
                 ),
                 child: Text(
-                  "Add to Cart • ${widget.data["price"]}",
+                  "Add to Cart • ${widget.data["price"] ?? "0"}",
                   style: const TextStyle(
                     fontSize: 15,
                     fontWeight: FontWeight.w700,
@@ -2503,12 +2453,31 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
                 fit: StackFit.expand,
                 children: [
                   if (!isPlaying)
-                    Image.asset(widget.data["image"], fit: BoxFit.cover)
+                    Image.network(
+                      widget.data["thumbnail_url"] ?? "",
+                      fit: BoxFit.cover,
+                      errorBuilder: (_, __, ___) =>
+                          Container(color: Colors.black),
+                    )
                   else
-                    InlineVideoPlayer(
-                      url:
-                          "https://djangotestcase.s3.ap-south-1.amazonaws.com/medical/videos/54cfac91-079b-481d-8d8c-9916924954f0_1000205769.mp4",
-                      title: '',
+                    Builder(
+                      builder: (context) {
+                        final List videos = widget.data["videos"] ?? [];
+
+                        if (videos.isNotEmpty) {
+                          return InlineVideoPlayer(
+                            url: videos.first["video_url"],
+                            title: videos.first["title"] ?? "",
+                          );
+                        } else {
+                          return const Center(
+                            child: Text(
+                              "No videos available",
+                              style: TextStyle(color: Colors.white),
+                            ),
+                          );
+                        }
+                      },
                     ),
 
                   if (!isPlaying)
@@ -2555,9 +2524,17 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
                             );
                           } else {
                             /// 🎥 PLAY VIDEO INLINE
-                            setState(() {
-                              isPlaying = true;
-                            });
+                            final videos = widget.data["videos"] as List? ?? [];
+
+                            if (videos.isEmpty) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text("No videos available"),
+                                ),
+                              );
+                            } else {
+                              setState(() => isPlaying = true);
+                            }
                           }
                         },
                         child: const Icon(
@@ -2607,7 +2584,7 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
                       ),
                       const SizedBox(width: 12),
                       Text(
-                        widget.data["learners"] ?? "",
+                        "1200+ Learners",
                         style: const TextStyle(
                           fontSize: 12,
                           color: Colors.black54,
@@ -2657,14 +2634,60 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
                     style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
                   ),
                   const SizedBox(height: 8),
-                  const Text(
-                    "This comprehensive medical course is designed to bridge the gap between theoretical foundations and real-world clinical practice. The curriculum is carefully structured by experienced medical professionals to help students, residents, and specialists gain confidence in diagnosis, decision-making, and patient care.\n\nYou will learn through high-quality video lectures, clinical case discussions, and concise medical notes curated specifically for exam preparation and real-life application.",
-                    style: TextStyle(
+                  Text(
+                    widget.data["description"] ?? "No description available",
+                    style: const TextStyle(
                       fontSize: 14,
                       height: 1.6,
                       color: Colors.black87,
                     ),
                   ),
+                  if (widget.videos.isNotEmpty) ...[
+                    const SizedBox(height: 24),
+                    const Text(
+                      "Course content",
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+
+                    ListView.separated(
+                      shrinkWrap: true,
+                      physics: const NeverScrollableScrollPhysics(),
+                      itemCount: widget.videos.length,
+                      separatorBuilder: (_, __) => const Divider(height: 1),
+                      itemBuilder: (context, index) {
+                        final video = widget.videos[index];
+
+                        return YoutubeStyleCourseCard(
+                          title: video["title"],
+                          views: "Lecture ${index + 1}",
+                          meta: "Video lecture",
+                          price: "", // no price here
+                          thumbnail: widget.data["thumbnail_url"],
+                          onTap: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => VideoPlayerScreen(
+                                  url: video["video_url"],
+                                  title: video["title"],
+                                ),
+                              ),
+                            );
+                          },
+                        );
+                      },
+                    ),
+                  ] else ...[
+                    const SizedBox(height: 24),
+                    const Text(
+                      "No videos available for this course",
+                      style: TextStyle(color: Colors.black54),
+                    ),
+                  ],
 
                   const SizedBox(height: 24),
 
