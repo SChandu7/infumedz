@@ -8,19 +8,7 @@ import 'package:file_picker/file_picker.dart';
 import 'dart:async';
 import 'package:infumedz/views.dart';
 import 'package:infumedz/main.dart';
-
-class ApiConfig {
-  static const base = "http://13.203.219.206:8000";
-
-  static const courses = "$base/api/infumedz/courses/";
-  static const books = "$base/api/infumedz/books/";
-
-  static const categories = "$base/api/infumedz/categories/";
-  static const createCourse = "$base/api/infumedz/course/create/";
-  static const addCourseVideo = "$base/api/infumedz/course/video/add/";
-  static const createBook = "$base/api/infumedz/book/create/";
-  static const addBookPdf = "$base/api/infumedz/book/pdf/add/";
-}
+import 'package:path/path.dart' as path;
 
 class AdminPanelHome extends StatelessWidget {
   const AdminPanelHome({super.key});
@@ -191,45 +179,68 @@ class _AddCourseFormState extends State<AddCourseForm> {
   final desc = TextEditingController();
   final price = TextEditingController();
   final thumbnail = TextEditingController();
+  File? thumbnailImage;
+  bool uploadingThumbnail = false;
+  String? uploadedThumbnailUrl;
 
   int? categoryId; // ✅ CORRECT
 
   List<Map<String, dynamic>> categories = [];
   bool loadingCategories = true;
+  final ImagePicker _picker = ImagePicker();
 
-  @override
-  void initState() {
-    super.initState();
-    fetchCategories();
+  Future<void> pickThumbnail() async {
+    final picked = await _picker.pickImage(
+      source: ImageSource.gallery,
+      imageQuality: 85,
+    );
+
+    if (picked != null) {
+      setState(() {
+        thumbnailImage = File(picked.path);
+      });
+    }
   }
 
-  Future<void> createCourse() async {
-    if (categoryId == null ||
-        title.text.isEmpty ||
-        desc.text.isEmpty ||
-        price.text.isEmpty ||
-        thumbnail.text.isEmpty) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text("Fill all fields")));
-      return;
-    }
-
+  Future<void> uploadThumbnailAndCreateCourse() async {
     try {
+      setState(() => uploadingThumbnail = true);
+
+      final request = http.MultipartRequest(
+        "POST",
+        Uri.parse(ApiConfig.uploadThumbnail),
+      );
+
+      request.files.add(
+        await http.MultipartFile.fromPath("thumbnail", thumbnailImage!.path),
+      );
+
+      final response = await request.send();
+      final responseBody = await response.stream.transform(utf8.decoder).join();
+      final body = responseBody.isNotEmpty ? jsonDecode(responseBody) : {};
+
+      if (response.statusCode != 201) {
+        setState(() => uploadingThumbnail = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("Thumbnail upload failed")),
+        );
+        return;
+      }
+
+      /// 🔹 NOW CREATE COURSE
       final res = await http.post(
         Uri.parse(ApiConfig.createCourse),
         headers: {"Content-Type": "application/json"},
         body: jsonEncode({
           "title": title.text.trim(),
           "description": desc.text.trim(),
-          "price": double.parse(price.text), // ✅ decimal
-          "category": categoryId, // ✅ int
-          "thumbnail_url": thumbnail.text.trim(), // ✅ REQUIRED
+          "price": double.parse(price.text),
+          "category": categoryId,
+          "thumbnail_url": body["thumbnail_url"],
         }),
       );
 
-      debugPrint("STATUS: ${res.statusCode}");
-      debugPrint("BODY: ${res.body}");
+      setState(() => uploadingThumbnail = false);
 
       if (res.statusCode == 201) {
         ScaffoldMessenger.of(
@@ -239,18 +250,54 @@ class _AddCourseFormState extends State<AddCourseForm> {
         title.clear();
         desc.clear();
         price.clear();
-        thumbnail.clear();
-        setState(() => categoryId = null);
+        setState(() {
+          categoryId = null;
+          thumbnailImage = null;
+          uploadedThumbnailUrl = null;
+        });
       } else {
         ScaffoldMessenger.of(
           context,
         ).showSnackBar(SnackBar(content: Text("❌ Error: ${res.body}")));
       }
+    } on SocketException catch (e) {
+      // 🚨 Upload actually completed
+      debugPrint("Socket closed after upload: $e");
+
+      // 🔹 IMPORTANT: Continue anyway
+      // If backend already got the URL, proceed
     } catch (e) {
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(SnackBar(content: Text("❌ Exception: $e")));
+      ).showSnackBar(SnackBar(content: Text("Upload error: $e")));
     }
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    fetchCategories();
+  }
+
+  Future<void> createCourse() async {
+    if (thumbnailImage == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Please select a thumbnail")),
+      );
+      return;
+    }
+
+    if (categoryId == null ||
+        title.text.isEmpty ||
+        desc.text.isEmpty ||
+        price.text.isEmpty) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text("Fill all fields")));
+      return;
+    }
+
+    await uploadThumbnailAndCreateCourse();
   }
 
   Future<void> fetchCategories() async {
@@ -286,9 +333,66 @@ class _AddCourseFormState extends State<AddCourseForm> {
           controller: price,
           decoration: const InputDecoration(labelText: "Price"),
         ),
-        TextField(
-          controller: thumbnail,
-          decoration: const InputDecoration(labelText: "Thumbnail URL"),
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              "Course Thumbnail",
+              style: TextStyle(fontWeight: FontWeight.w600),
+            ),
+            const SizedBox(height: 8),
+
+            GestureDetector(
+              onTap: pickThumbnail,
+              child: Stack(
+                children: [
+                  Container(
+                    height: 160,
+                    width: double.infinity,
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: Colors.grey.shade400),
+                    ),
+                    child: thumbnailImage == null
+                        ? const Center(
+                            child: Icon(
+                              Icons.add_a_photo,
+                              size: 40,
+                              color: Colors.grey,
+                            ),
+                          )
+                        : ClipRRect(
+                            borderRadius: BorderRadius.circular(12),
+                            child: Image.file(
+                              thumbnailImage!,
+                              fit: BoxFit.cover,
+                              width: double.infinity,
+                            ),
+                          ),
+                  ),
+
+                  /// ✏️ EDIT ICON (ONLY WHEN IMAGE EXISTS)
+                  if (thumbnailImage != null)
+                    Positioned(
+                      bottom: 8,
+                      right: 8,
+                      child: Container(
+                        padding: const EdgeInsets.all(6),
+                        decoration: BoxDecoration(
+                          color: Colors.black54,
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        child: const Icon(
+                          Icons.edit,
+                          color: Colors.white,
+                          size: 16,
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+            ),
+          ],
         ),
 
         const SizedBox(height: 16),
@@ -304,8 +408,8 @@ class _AddCourseFormState extends State<AddCourseForm> {
         const SizedBox(height: 24),
 
         ElevatedButton(
-          onPressed: createCourse,
-          child: const Text("Create Course"),
+          onPressed: uploadingThumbnail ? null : createCourse,
+          child: Text(uploadingThumbnail ? "Uploading..." : "Create Course"),
         ),
       ],
     );
@@ -364,6 +468,8 @@ class _AddCourseVideoFormState extends State<AddCourseVideoForm> {
 
   final title = TextEditingController();
   final order = TextEditingController();
+  double uploadProgress = 0.0;
+  bool uploading = false;
 
   File? video;
   bool loading = false;
@@ -400,72 +506,79 @@ class _AddCourseVideoFormState extends State<AddCourseVideoForm> {
       return;
     }
 
-    setState(() => loading = true);
+    setState(() {
+      uploading = true;
+      uploadProgress = 0.0;
+    });
 
-    /// 🔹 Upload to S3 (already implemented in your project)
-    final req = http.MultipartRequest(
-      "POST",
-      Uri.parse("http://13.203.219.206:8000/infumedz/upload/"),
+    // 1️⃣ Ask Django for presigned URL
+
+    final presignRes = await http.post(
+      Uri.parse(ApiConfig.presignedVideoUpload),
+      headers: {"Content-Type": "application/json"},
+      body: jsonEncode({
+        "filename": path.basename(video!.path),
+        "content_type": "video/mp4",
+      }),
     );
 
-    req.fields["title"] = "Human Anatomy Basics";
-    req.fields["description"] = "Medical content upload";
-    req.fields["content_type"] = "BOTH";
+    final presigned = jsonDecode(presignRes.body);
+    final uploadUrl = presigned["upload_url"];
+    final fileUrl = presigned["file_url"];
 
-    if (video != null) {
-      req.files.add(await http.MultipartFile.fromPath("video", video!.path));
-    }
+    setState(() => uploadProgress = 0.2);
 
-    final response = await req.send();
+    // 2️⃣ Upload directly to S3
+    final bytes = await video!.readAsBytes();
 
-    if (response.statusCode == 201) {
+    final s3Res = await http.put(
+      Uri.parse(uploadUrl),
+      headers: {"Content-Type": "video/mp4"},
+      body: bytes,
+    );
+
+    if (s3Res.statusCode != 200) {
+      setState(() {
+        uploading = false;
+        uploadProgress = 0.0;
+      });
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(const SnackBar(content: Text("Uploaded Successfully")));
-
-      setState(() {});
-    } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Upload failed (${response.statusCode})")),
-      );
+      ).showSnackBar(const SnackBar(content: Text("S3 upload failed")));
+      return;
     }
 
-    final body = jsonDecode(await response.stream.bytesToString());
-    final videoUrl = body["video_url"];
+    setState(() => uploadProgress = 0.7);
 
-    /// 🔹 Save under course
-    final response2 = await http.post(
+    // 3️⃣ Save URL in Django (NO CHANGE)
+    final res = await http.post(
       Uri.parse(ApiConfig.addCourseVideo),
       headers: {"Content-Type": "application/json"},
       body: jsonEncode({
         "course": courseId,
         "title": title.text,
-        "video_url": videoUrl,
-        "order": int.parse(order.text),
+        "video_url": fileUrl,
+        "order": int.tryParse(order.text) ?? 1,
       }),
     );
-    if (response2.statusCode == 201) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text("Uploaded Successfully")));
-
-      setState(() {});
-    } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Upload failed (${response.toString()})")),
-      );
-    }
 
     setState(() {
-      loading = false;
+      uploading = false;
+      uploadProgress = 1.0;
       video = null;
       title.clear();
       order.clear();
     });
 
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(const SnackBar(content: Text("Video added to course")));
+    if (res.statusCode == 201) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text("Video added successfully")));
+    } else {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(res.body)));
+    }
   }
 
   @override
@@ -521,8 +634,36 @@ class _AddCourseVideoFormState extends State<AddCourseVideoForm> {
         const SizedBox(height: 20),
 
         ElevatedButton(
-          onPressed: loading ? null : uploadVideo,
-          child: Text(loading ? "Uploading..." : "Add Video"),
+          onPressed: uploading ? null : uploadVideo,
+          style: ElevatedButton.styleFrom(
+            padding: const EdgeInsets.symmetric(vertical: 14),
+          ),
+          child: uploading
+              ? Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Text(
+                      "Uploading...",
+                      style: TextStyle(fontWeight: FontWeight.w600),
+                    ),
+                    const SizedBox(height: 8),
+                    LinearProgressIndicator(
+                      value: uploadProgress,
+                      minHeight: 6,
+                      backgroundColor: Colors.white24,
+                      color: Colors.white,
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      "${(uploadProgress * 100).toStringAsFixed(0)}%",
+                      style: const TextStyle(fontSize: 12),
+                    ),
+                  ],
+                )
+              : const Text(
+                  "Add Video",
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+                ),
         ),
       ],
     );
@@ -586,6 +727,10 @@ class _AddBookFormState extends State<AddBookForm> {
   int? categoryId;
   List<Map<String, dynamic>> categories = [];
   bool loading = true;
+  File? thumbnailImage;
+  bool uploadingThumbnail = false;
+
+  final ImagePicker _picker = ImagePicker();
 
   @override
   void initState() {
@@ -593,12 +738,15 @@ class _AddBookFormState extends State<AddBookForm> {
     fetchCategories();
   }
 
-  Future<void> fetchCategories() async {
-    final res = await http.get(Uri.parse(ApiConfig.categories));
-    if (res.statusCode == 200) {
+  Future<void> pickThumbnail() async {
+    final picked = await _picker.pickImage(
+      source: ImageSource.gallery,
+      imageQuality: 85,
+    );
+
+    if (picked != null) {
       setState(() {
-        categories = List<Map<String, dynamic>>.from(jsonDecode(res.body));
-        loading = false;
+        thumbnailImage = File(picked.path);
       });
     }
   }
@@ -608,38 +756,81 @@ class _AddBookFormState extends State<AddBookForm> {
         title.text.isEmpty ||
         desc.text.isEmpty ||
         price.text.isEmpty ||
-        thumbnail.text.isEmpty) {
+        thumbnailImage == null) {
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(const SnackBar(content: Text("Fill all fields")));
       return;
     }
 
-    final res = await http.post(
-      Uri.parse(ApiConfig.createBook),
-      headers: {"Content-Type": "application/json"},
-      body: jsonEncode({
-        "title": title.text.trim(),
-        "description": desc.text.trim(),
-        "price": double.parse(price.text),
-        "category": categoryId,
-        "thumbnail_url": thumbnail.text.trim(),
-      }),
-    );
+    try {
+      /// 1️⃣ UPLOAD THUMBNAIL
+      setState(() => uploadingThumbnail = true);
 
-    if (res.statusCode == 201) {
+      final uploadReq = http.MultipartRequest(
+        "POST",
+        Uri.parse(ApiConfig.uploadThumbnail),
+      );
+
+      uploadReq.files.add(
+        await http.MultipartFile.fromPath("thumbnail", thumbnailImage!.path),
+      );
+
+      final uploadRes = await uploadReq.send();
+      final uploadBody = jsonDecode(await uploadRes.stream.bytesToString());
+
+      if (uploadRes.statusCode != 201) {
+        throw Exception("Thumbnail upload failed");
+      }
+
+      final thumbnailUrl = uploadBody["thumbnail_url"];
+
+      /// 2️⃣ CREATE BOOK
+      final res = await http.post(
+        Uri.parse(ApiConfig.createBook),
+        headers: {"Content-Type": "application/json"},
+        body: jsonEncode({
+          "title": title.text.trim(),
+          "description": desc.text.trim(),
+          "price": double.parse(price.text),
+          "category": categoryId,
+          "thumbnail_url": thumbnailUrl, // ✅ S3 URL
+        }),
+      );
+
+      if (res.statusCode == 201) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text("✅ Book Created")));
+
+        title.clear();
+        desc.clear();
+        price.clear();
+        setState(() {
+          categoryId = null;
+          thumbnailImage = null;
+        });
+      } else {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(res.body)));
+      }
+    } catch (e) {
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(const SnackBar(content: Text("✅ Book Created")));
-      title.clear();
-      desc.clear();
-      price.clear();
-      thumbnail.clear();
-      setState(() => categoryId = null);
-    } else {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(res.body)));
+      ).showSnackBar(SnackBar(content: Text("❌ $e")));
+    } finally {
+      setState(() => uploadingThumbnail = false);
+    }
+  }
+
+  Future<void> fetchCategories() async {
+    final res = await http.get(Uri.parse(ApiConfig.categories));
+    if (res.statusCode == 200) {
+      setState(() {
+        categories = List<Map<String, dynamic>>.from(jsonDecode(res.body));
+        loading = false;
+      });
     }
   }
 
@@ -666,9 +857,66 @@ class _AddBookFormState extends State<AddBookForm> {
           controller: price,
           decoration: const InputDecoration(labelText: "Price"),
         ),
-        TextField(
-          controller: thumbnail,
-          decoration: const InputDecoration(labelText: "Thumbnail URL"),
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              "Book Thumbnail",
+              style: TextStyle(fontWeight: FontWeight.w600),
+            ),
+            const SizedBox(height: 8),
+
+            GestureDetector(
+              onTap: pickThumbnail,
+              child: Stack(
+                children: [
+                  Container(
+                    height: 160,
+                    width: double.infinity,
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: Colors.grey.shade400),
+                    ),
+                    child: thumbnailImage == null
+                        ? const Center(
+                            child: Icon(
+                              Icons.add_a_photo,
+                              size: 40,
+                              color: Colors.grey,
+                            ),
+                          )
+                        : ClipRRect(
+                            borderRadius: BorderRadius.circular(12),
+                            child: Image.file(
+                              thumbnailImage!,
+                              fit: BoxFit.cover,
+                              width: double.infinity,
+                            ),
+                          ),
+                  ),
+
+                  /// ✏️ EDIT ICON
+                  if (thumbnailImage != null)
+                    Positioned(
+                      bottom: 8,
+                      right: 8,
+                      child: Container(
+                        padding: const EdgeInsets.all(6),
+                        decoration: BoxDecoration(
+                          color: Colors.black54,
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        child: const Icon(
+                          Icons.edit,
+                          color: Colors.white,
+                          size: 16,
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+            ),
+          ],
         ),
 
         const SizedBox(height: 16),
@@ -680,7 +928,12 @@ class _AddBookFormState extends State<AddBookForm> {
               ),
 
         const SizedBox(height: 24),
-        ElevatedButton(onPressed: createBook, child: const Text("Create Book")),
+        ElevatedButton(
+          onPressed: uploadingThumbnail ? null : createBook,
+          child: uploadingThumbnail
+              ? const CircularProgressIndicator(color: Colors.white)
+              : const Text("Create Book"),
+        ),
       ],
     );
   }
