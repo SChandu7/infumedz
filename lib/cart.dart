@@ -2,6 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'dart:async';
 
+class CartPage extends StatelessWidget {
+  const CartPage({super.key});
+  @override
+  Widget build(BuildContext context) => const Center(child: Text("Cart"));
+}
+
 class CartBottomSheet extends StatefulWidget {
   final List<Map<String, dynamic>> initialItems;
   final ValueChanged<List<Map<String, dynamic>>>? onCartUpdated;
@@ -150,7 +156,7 @@ class _CartItemTile extends StatelessWidget {
           ClipRRect(
             borderRadius: BorderRadius.circular(8),
             child: Image.asset(
-              item["image"],
+              item["image"] as String,
               width: 60,
               height: 50,
               fit: BoxFit.cover,
@@ -174,7 +180,7 @@ class _CartItemTile extends StatelessWidget {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  item["price"],
+                  item["price"] as String,
                   style: const TextStyle(
                     fontWeight: FontWeight.bold,
                     color: Color(0xFF0E5FD8),
@@ -440,7 +446,7 @@ class _WishlistItemTile extends StatelessWidget {
           ClipRRect(
             borderRadius: BorderRadius.circular(10),
             child: Image.asset(
-              item["image"],
+              item["image"] as String,
               width: 64,
               height: 56,
               fit: BoxFit.cover,
@@ -455,7 +461,7 @@ class _WishlistItemTile extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  item["title"],
+                  item["title"] as String,
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(

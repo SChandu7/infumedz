@@ -174,7 +174,16 @@ class _MedicalStoreScreenState extends State<MedicalStoreScreen> {
           setState(() {
             CartStore.clear();
             for (final item in updated) {
-              CartStore.add(item);
+              final safeItem = {
+                "id": item["id"] ?? "",
+                "title": item["title"] ?? "Untitled",
+                "image":
+                    item["image"] ??
+                    item["thumbnail_url"] ??
+                    "assets/images/placeholder.png",
+                "price": item["price"]?.toString() ?? "0",
+              };
+              CartStore.add(safeItem);
             }
           });
         },
@@ -191,7 +200,16 @@ class _MedicalStoreScreenState extends State<MedicalStoreScreen> {
       builder: (_) => WishlistBottomSheet(
         initialItems: wishlistItems,
         onAddToCart: (item) {
-          CartStore.add(item);
+          final safeItem = {
+            "id": item["id"] ?? "",
+            "title": item["title"] ?? "Untitled",
+            "image":
+                item["image"] ??
+                item["thumbnail_url"] ??
+                "assets/images/placeholder.png",
+            "price": item["price"]?.toString() ?? "0",
+          };
+          CartStore.add(safeItem);
         },
         onWishlistUpdated: (updated) {
           setState(() {
@@ -402,7 +420,16 @@ class _MedicalStoreScreenState extends State<MedicalStoreScreen> {
                   onAddToCart: () {
                     setState(() {
                       if (!CartStore.items.contains(item)) {
-                        CartStore.add(item);
+                        final safeItem = {
+                          "id": item["id"] ?? "",
+                          "title": item["title"] ?? "Untitled",
+                          "image":
+                              item["image"] ??
+                              item["thumbnail_url"] ??
+                              "assets/images/placeholder.png",
+                          "price": item["price"]?.toString() ?? "0",
+                        };
+                        CartStore.add(safeItem);
                       }
                     });
 
@@ -721,8 +748,28 @@ class CourseDetailScreen extends StatefulWidget {
 
 class _CourseDetailScreenState extends State<CourseDetailScreen> {
   bool isPlaying = false;
+  bool get isBook => widget.option == "Books";
+  String _getYoutubeThumbnail(String url) {
+    if (url.isEmpty || !url.contains("youtu")) return "";
+
+    final uri = Uri.tryParse(url);
+    if (uri == null) return "";
+
+    String? videoId;
+
+    if (uri.host.contains("youtu.be")) {
+      videoId = uri.pathSegments.isNotEmpty ? uri.pathSegments.first : null;
+    } else {
+      videoId = uri.queryParameters["v"];
+    }
+
+    if (videoId == null || videoId.isEmpty) return "";
+    return "https://img.youtube.com/vi/$videoId/hqdefault.jpg";
+  }
+
   @override
   void initState() {
+    print(widget.data["videos"]);
     // TODO: implement initState
     if (widget.option == "Books") {
       widget.videos = List<Map<String, dynamic>>.from(
@@ -835,12 +882,23 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
                   else
                     Builder(
                       builder: (context) {
-                        final List videos = widget.data["videos"] ?? [];
+                        if (widget.videos.isNotEmpty) {
+                          final video = widget.videos.first;
+                          final String videoUrl =
+                              video["video_url"]?.toString() ?? "";
 
-                        if (videos.isNotEmpty) {
+                          if (videoUrl.isEmpty) {
+                            return const Center(
+                              child: Text(
+                                "Invalid video URL",
+                                style: TextStyle(color: Colors.white),
+                              ),
+                            );
+                          }
+
                           return InlineVideoPlayer(
-                            url: videos.first["video_url"],
-                            title: videos.first["title"] ?? "",
+                            url: videoUrl,
+                            title: video["title"] ?? "",
                           );
                         } else {
                           return const Center(
@@ -868,50 +926,46 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
                     Center(
                       child: GestureDetector(
                         onTap: () {
-                          final title = widget.data["title"]
-                              .toString()
-                              .toLowerCase();
+                          final isBook = widget.option == "Books";
 
-                          final isPdfType =
-                              title.contains("pdf") ||
-                              title.contains("Based") ||
-                              title.contains("notes") ||
-                              title.contains("Rapid") ||
-                              title.contains("rapid revise") ||
-                              title.contains("case based") ||
-                              title.contains("case based") ||
-                              title.contains("case based") ||
-                              title.contains("handbook");
+                          if (isBook) {
+                            // 📄 OPEN FIRST PDF
+                            if (widget.videos.isEmpty) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text("No books available"),
+                                ),
+                              );
+                              return;
+                            }
 
-                          if (isPdfType) {
-                            /// 📄 OPEN PDF PAGE (NO setState)
                             Navigator.push(
                               context,
                               MaterialPageRoute(
                                 builder: (_) => PdfScreen(
-                                  pdfUrl:
-                                      "https://djangotestcase.s3.ap-south-1.amazonaws.com/medical/pdfs/54cfac91-079b-481d-8d8c-9916924954f0_CASTOR.pdf",
-                                  title: title,
+                                  pdfUrl: widget.videos.first["pdf_url"],
+                                  title: widget.data["title"],
                                 ),
                               ),
                             );
                           } else {
-                            /// 🎥 PLAY VIDEO INLINE
-                            final videos = widget.data["videos"] as List? ?? [];
-
-                            if (videos.isEmpty) {
+                            // 🎥 PLAY VIDEO INLINE
+                            if (widget.videos.isEmpty) {
                               ScaffoldMessenger.of(context).showSnackBar(
                                 const SnackBar(
                                   content: Text("No videos available"),
                                 ),
                               );
-                            } else {
-                              setState(() => isPlaying = true);
+                              return;
                             }
+
+                            setState(() => isPlaying = true);
                           }
                         },
-                        child: const Icon(
-                          Icons.play_circle_fill,
+                        child: Icon(
+                          widget.option == "Books"
+                              ? Icons.picture_as_pdf
+                              : Icons.play_circle_fill,
                           size: 72,
                           color: Colors.white70,
                         ),
@@ -1032,26 +1086,70 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
                       itemCount: widget.videos.length,
                       separatorBuilder: (_, __) => const Divider(height: 1),
                       itemBuilder: (context, index) {
-                        final video = widget.videos[index];
+                        final item = widget.videos[index];
 
-                        return YoutubeStyleCourseCard(
-                          title: video["title"],
-                          views: "Lecture ${index + 1}",
-                          meta: "Video lecture",
-                          price: "", // no price here
-                          thumbnail: widget.data["thumbnail_url"],
-                          onTap: () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (_) => VideoPlayerScreen(
-                                  url: video["video_url"],
-                                  title: video["title"],
+                        final title = item["title"] ?? "Untitled";
+
+                        if (isBook) {
+                          // 📄 BOOK / PDF
+                          final pdfUrl = item["pdf_url"];
+
+                          return YoutubeStyleCourseCard3(
+                            title: title,
+                            views: "Document ${index + 1}",
+                            meta: "PDF",
+                            price: "",
+                            thumbnail:
+                                "https://cdn-icons-png.flaticon.com/512/337/337946.png",
+                            onTap: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) =>
+                                      PdfScreen(pdfUrl: pdfUrl, title: title),
                                 ),
-                              ),
-                            );
-                          },
-                        );
+                              );
+                            },
+                            isBook: isBook,
+                          );
+                        } else {
+                          // 🎥 VIDEO
+                          final String videoUrl =
+                              item["video_url"]?.toString() ?? "";
+                          final thumbnail =
+                              item["thumbnail_url"] ??
+                              _getYoutubeThumbnail(videoUrl);
+
+                          return YoutubeStyleCourseCard3(
+                            title: title,
+                            views: "Lecture ${index + 1}",
+                            meta: "Video",
+                            price: "",
+                            thumbnail: thumbnail,
+                            onTap: () {
+                              if (videoUrl.isEmpty) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    content: Text("Invalid video URL"),
+                                  ),
+                                );
+                                return;
+                              }
+
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) => VideoPlayerScreen(
+                                    url: videoUrl,
+                                    title: title,
+                                  ),
+                                ),
+                              );
+                            },
+
+                            isBook: isBook,
+                          );
+                        }
                       },
                     ),
                   ] else ...[
@@ -1248,6 +1346,111 @@ class _BulletPoint extends StatelessWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class YoutubeStyleCourseCard3 extends StatelessWidget {
+  final String title;
+  final String views;
+  final String meta;
+  final String price;
+  final String thumbnail;
+  final VoidCallback onTap;
+  final bool isBook;
+
+  const YoutubeStyleCourseCard3({
+    super.key,
+    required this.title,
+    required this.views,
+    required this.meta,
+    required this.price,
+    required this.thumbnail,
+    required this.onTap,
+    required this.isBook,
+  });
+  Widget _fallbackThumb() {
+    return Container(
+      width: 140,
+      height: 80,
+      color: Colors.black12,
+      alignment: Alignment.center,
+      child: Icon(
+        isBook ? Icons.picture_as_pdf : Icons.play_circle,
+        size: 36,
+        color: Colors.grey,
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap, // ✅ SINGLE SOURCE OF TRUTH
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 8),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // 🖼 Thumbnail
+            ClipRRect(
+              borderRadius: BorderRadius.circular(6),
+              child: Stack(
+                alignment: Alignment.center,
+                children: [
+                  thumbnail.isNotEmpty
+                      ? Image.network(
+                          thumbnail,
+                          width: 140,
+                          height: 80,
+                          fit: BoxFit.cover,
+
+                          errorBuilder: (_, __, ___) => _fallbackThumb(),
+                        )
+                      : _fallbackThumb(),
+
+                  Container(
+                    width: 140,
+                    height: 80,
+                    color: Colors.black.withOpacity(0.15),
+                  ),
+                  Icon(
+                    isBook ? Icons.picture_as_pdf : Icons.play_circle_fill,
+                    color: Colors.white,
+                    size: 36,
+                  ),
+                ],
+              ),
+            ),
+
+            const SizedBox(width: 12),
+
+            // 📄 Details
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      fontSize: 14.5,
+                      fontWeight: FontWeight.w600,
+                      color: Color(0xFF1F3C68),
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    views,
+                    style: const TextStyle(fontSize: 12, color: Colors.black45),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

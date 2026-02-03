@@ -1642,11 +1642,6 @@ final libraryPdfs = [
   },
 ];
 
-class CartPage extends StatelessWidget {
-  const CartPage({super.key});
-  @override
-  Widget build(BuildContext context) => const Center(child: Text("Cart"));
-}
 
 class FavouritesPage extends StatelessWidget {
   const FavouritesPage({super.key});
