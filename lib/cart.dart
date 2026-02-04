@@ -537,3 +537,5 @@ class _EmptyWishlistView extends StatelessWidget {
     );
   }
 }
+
+

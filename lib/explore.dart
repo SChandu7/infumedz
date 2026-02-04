@@ -134,10 +134,12 @@ class _MedicalStoreScreenState extends State<MedicalStoreScreen> {
 
               Wrap(
                 spacing: 10,
-                children: ["MBBS", "MD/MS", "DM/DrNB"].map((level) {
-                  final active = selectedCategoryName == level;
+                children: categories.map((cat) {
+                  final name = cat["name"];
+                  final active = selectedCategoryName == name;
+
                   return ChoiceChip(
-                    label: Text(level),
+                    label: Text(name),
                     selected: active,
                     selectedColor: const Color(0xFF0E5FD8),
                     labelStyle: TextStyle(
@@ -146,7 +148,8 @@ class _MedicalStoreScreenState extends State<MedicalStoreScreen> {
                     ),
                     onSelected: (_) {
                       setState(() {
-                        selectedCategoryName = level;
+                        selectedCategoryName = name;
+                        selectedCategoryId = cat["id"];
                       });
                       Navigator.pop(context);
                     },
@@ -365,12 +368,15 @@ class _MedicalStoreScreenState extends State<MedicalStoreScreen> {
                   "Showing $selectedType for ",
                   style: const TextStyle(fontSize: 17, color: Colors.black54),
                 ),
-                Text(
-                  selectedCategoryName,
-                  style: const TextStyle(
-                    fontSize: 15,
-                    fontWeight: FontWeight.bold,
-                    color: Color(0xFF0E5FD8),
+                InkWell(
+                  onTap: _openFilterSheet,
+                  child: Text(
+                    selectedCategoryName,
+                    style: const TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.bold,
+                      color: Color(0xFF0E5FD8),
+                    ),
                   ),
                 ),
               ],
@@ -550,8 +556,7 @@ class _CourseListCard extends StatelessWidget {
                           borderRadius: BorderRadius.circular(4),
                         ),
                         child: Text(
-                          "${((data["videos"] as List).length)} videos",
-
+                          "${(data["videos"] as List).length} videos",
                           style: const TextStyle(
                             color: Colors.white,
                             fontSize: 11,
@@ -560,29 +565,6 @@ class _CourseListCard extends StatelessWidget {
                         ),
                       ),
                     ),
-                  Positioned(
-                    bottom: 8,
-                    left: 8,
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 8,
-                        vertical: 4,
-                      ),
-                      decoration: BoxDecoration(
-                        color: Colors.black.withOpacity(0.7),
-                        borderRadius: BorderRadius.circular(4),
-                      ),
-                      child: Text(
-                        "${data["videoCount"]} videos",
-
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 11,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ),
-                  ),
 
                   /// 🏷 Tag
                   if (data["tag"] != null)

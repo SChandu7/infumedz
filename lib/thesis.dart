@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:animate_do/animate_do.dart';
 import 'package:url_launcher/url_launcher.dart';
 
-
 class ThesisAssistanceScreen extends StatelessWidget {
   const ThesisAssistanceScreen({super.key});
 
@@ -173,22 +172,17 @@ class ThesisAssistanceScreen extends StatelessWidget {
                     ),
                     const SizedBox(height: 8),
 
-                   
-
-                    
-
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                       children: const [
-_ContactChip(
-  icon: Icons.call,
-  phoneNumber: "+919167459135",
-),
-_ContactChip(
-  icon: Icons.chat,
-  phoneNumber: "+919167459135",
-),
-
+                        _ContactChip(
+                          icon: Icons.call,
+                          phoneNumber: "+919167459135",
+                        ),
+                        _ContactChip(
+                          icon: Icons.chat,
+                          phoneNumber: "9167459138",
+                        ),
                       ],
                     ),
                   ],
@@ -218,10 +212,7 @@ _ContactChip(
           color: Colors.white,
           borderRadius: BorderRadius.circular(14),
           boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.07),
-              blurRadius: 10,
-            ),
+            BoxShadow(color: Colors.black.withOpacity(0.07), blurRadius: 10),
           ],
         ),
         child: Row(
@@ -275,10 +266,7 @@ _ContactChip(
           const SizedBox(width: 10),
           Text(
             text,
-            style: const TextStyle(
-              fontSize: 14.5,
-              fontWeight: FontWeight.w600,
-            ),
+            style: const TextStyle(fontSize: 14.5, fontWeight: FontWeight.w600),
           ),
         ],
       ),
@@ -293,9 +281,7 @@ _ContactChip(
         maxLines: maxLines,
         decoration: InputDecoration(
           labelText: label,
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(6),
-          ),
+          border: OutlineInputBorder(borderRadius: BorderRadius.circular(6)),
         ),
       ),
     );
@@ -304,40 +290,34 @@ _ContactChip(
 
 /// 🔹 CONTACT CHIP
 
-
 class _ContactChip extends StatelessWidget {
   final IconData icon;
-  final String phoneNumber;
-   // e.g. "+919876543210"
+  final String phoneNumber; // "+919167459135" allowed here
 
-  const _ContactChip({
-    required this.icon,
-    required this.phoneNumber,
-  });
+  const _ContactChip({required this.icon, required this.phoneNumber});
+
+  String get _cleanNumber =>
+      phoneNumber.replaceAll("+", "").replaceAll(" ", "");
 
   Future<void> _makeCall() async {
-    final uri = Uri.parse("tel:$phoneNumber");
-    if (await canLaunchUrl(uri)) {
-      await launchUrl(uri);
+    final uri = Uri(scheme: 'tel', path: _cleanNumber);
+    if (!await launchUrl(uri)) {
+      debugPrint("Could not launch call");
     }
   }
 
   Future<void> _openWhatsApp() async {
-    final uri = Uri.parse(
-     " https://wa.me/9167459138",
-    );
-    if (await canLaunchUrl(uri)) {
-      await launchUrl(
-        uri,
-        mode: LaunchMode.externalApplication,
-      );
+    final uri = Uri(scheme: 'https', host: 'wa.me', path: _cleanNumber);
+
+    if (!await launchUrl(uri, mode: LaunchMode.externalApplication)) {
+      debugPrint("Could not open WhatsApp");
     }
   }
 
   void _handleTap() {
     if (icon == Icons.call) {
       _makeCall();
-    } else if (icon == Icons.chat ) {
+    } else {
       _openWhatsApp();
     }
   }
@@ -350,15 +330,12 @@ class _ContactChip extends StatelessWidget {
       child: Chip(
         avatar: Icon(
           icon,
-          color: icon == Icons.call
-              ? Colors.blue
-              : Colors.green,
+          color: icon == Icons.call ? Colors.blue : Colors.green,
         ),
-        label: Text((icon == Icons.chat)? "Chat" :"Call"),
+        label: Text(icon == Icons.call ? "Call" : "Chat"),
       ),
     );
   }
 }
 
-
-
+enum ContactAction { call, whatsapp }

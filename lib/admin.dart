@@ -1403,47 +1403,6 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
   }
 }
 
-class _StatCard extends StatelessWidget {
-  final String title;
-  final String value;
-  final IconData icon;
-
-  const _StatCard({
-    required this.title,
-    required this.value,
-    required this.icon,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Expanded(
-      child: Container(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(14),
-          boxShadow: [
-            BoxShadow(color: Colors.black.withOpacity(0.08), blurRadius: 12),
-          ],
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Icon(icon, size: 28, color: const Color(0xFF0E5FD8)),
-            const SizedBox(height: 12),
-            Text(
-              value,
-              style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w800),
-            ),
-            const SizedBox(height: 4),
-            Text(title, style: const TextStyle(color: Colors.black54)),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
 class _DashboardMetric extends StatelessWidget {
   final String title;
   final String value;
@@ -1527,6 +1486,10 @@ class _AdminBannerScreenState extends State<AdminBannerScreen> {
   final imageUrlController = TextEditingController();
   List<Map<String, dynamic>> allCourses = [];
   List<Map<String, dynamic>> allBooks = [];
+  List<Map<String, dynamic>> serverCategories = []; // 🔐 never touched
+
+  List<Map<String, dynamic>> categories = []; // server truth
+  List<Map<String, dynamic>> tempCategories = []; // dialog working copy
 
   List<String> popularCourseIds = [];
   List<String> popularBookIds = [];
@@ -1542,6 +1505,7 @@ class _AdminBannerScreenState extends State<AdminBannerScreen> {
     super.initState();
     fetchData();
     fetchAdminData();
+    fetchCategories();
   }
 
   /* ================= FETCH ================= */
@@ -1569,6 +1533,187 @@ class _AdminBannerScreenState extends State<AdminBannerScreen> {
         context,
       ).showSnackBar(SnackBar(content: Text("Failed to load data: $e")));
     }
+  }
+
+  void _openCategoryDialog(BuildContext context) {
+    tempCategories = List<Map<String, dynamic>>.from(categories);
+
+    final TextEditingController newCategoryCtrl = TextEditingController();
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return Dialog(
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      "Manage Categories",
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+
+                    const SizedBox(height: 12),
+
+                    /// CATEGORY LIST
+                    SizedBox(
+                      height: 220,
+                      child: ListView.builder(
+                        itemCount: tempCategories.length,
+                        itemBuilder: (_, i) {
+                          final cat = tempCategories[i];
+                          return ListTile(
+                            title: Text(cat["name"]),
+                            trailing: IconButton(
+                              icon: const Icon(Icons.delete, color: Colors.red),
+                              onPressed: () {
+                                setDialogState(() {
+                                  tempCategories.removeAt(i);
+                                });
+                              },
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+
+                    const Divider(),
+
+                    /// ADD CATEGORY
+                    Row(
+                      children: [
+                        Expanded(
+                          child: TextField(
+                            controller: newCategoryCtrl,
+                            decoration: const InputDecoration(
+                              hintText: "New category name",
+                            ),
+                          ),
+                        ),
+                        IconButton(
+                          icon: const Icon(
+                            Icons.add_circle,
+                            color: Colors.blue,
+                          ),
+                          onPressed: () {
+                            if (newCategoryCtrl.text.trim().isEmpty) return;
+                            setDialogState(() {
+                              tempCategories.add({
+                                "id": null, // new
+                                "name": newCategoryCtrl.text.trim(),
+                              });
+                              newCategoryCtrl.clear();
+                            });
+                          },
+                        ),
+                      ],
+                    ),
+
+                    const SizedBox(height: 16),
+
+                    /// ACTIONS
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.end,
+                      children: [
+                        TextButton(
+                          onPressed: () => Navigator.pop(context),
+                          child: const Text("Cancel"),
+                        ),
+                        const SizedBox(width: 8),
+                        ElevatedButton(
+                          onPressed: () {
+                            setState(() {
+                              categories = List<Map<String, dynamic>>.from(
+                                tempCategories,
+                              );
+                            });
+                            Navigator.pop(context);
+                          },
+                          child: const Text("Apply"),
+                        ),
+                      ],
+                    ),
+                    Center(
+                      child: Text(
+                        "ⓘ Don’t forget to save changes",
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: Colors.red.shade400,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Future<void> syncCategories() async {
+    // 🔥 DELETE
+    for (final old in serverCategories) {
+      final exists = categories.any((c) => c["id"] == old["id"]);
+
+      if (!exists && old["id"] != null) {
+        debugPrint("Deleting category ${old["id"]}");
+
+        await http.delete(
+          Uri.parse("https://api.chandus7.in/api/infumedz/categories/"),
+          headers: {"Content-Type": "application/json"},
+          body: jsonEncode({"id": old["id"]}),
+        );
+      }
+    }
+
+    // 🔥 ADD
+    for (final cat in categories) {
+      if (cat["id"] == null) {
+        debugPrint("Adding category ${cat["name"]}");
+
+        await http.post(
+          Uri.parse("https://api.chandus7.in/api/infumedz/categories/"),
+          headers: {"Content-Type": "application/json"},
+          body: jsonEncode({"name": cat["name"]}),
+        );
+      }
+    }
+    debugPrint(
+      "CURRENT: ---------------------------------------------------------------",
+    );
+
+    debugPrint("SERVER: $serverCategories");
+    debugPrint("CURRENT: $categories");
+
+    // 🔄 Refresh after sync
+    await fetchCategories();
+  }
+
+  Future<void> fetchCategories() async {
+    final res = await http.get(
+      Uri.parse("https://api.chandus7.in/api/infumedz/categories/"),
+    );
+
+    final data = List<Map<String, dynamic>>.from(jsonDecode(res.body));
+
+    setState(() {
+      serverCategories = List.from(data); // 🔐 server truth
+      categories = List.from(data); // editable UI
+    });
   }
 
   Future<void> fetchAdminData() async {
@@ -1732,6 +1877,16 @@ class _AdminBannerScreenState extends State<AdminBannerScreen> {
                             child: const Text("Apply"),
                           ),
                         ],
+                      ),
+                      Center(
+                        child: Text(
+                          " ⓘ Don’t forget to save changes",
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: Colors.red.shade400,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
                       ),
                     ],
                   ),
@@ -2035,6 +2190,16 @@ class _AdminBannerScreenState extends State<AdminBannerScreen> {
                     ),
                   ],
                 ),
+                Center(
+                  child: Text(
+                    "ⓘ Don’t forget to save changes",
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: Colors.red.shade400,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ),
               ],
             ),
           ),
@@ -2159,7 +2324,7 @@ class _AdminBannerScreenState extends State<AdminBannerScreen> {
           /// ABOUT / HINT TEXT
           configCard(
             icon: Icons.info_outline,
-            title: "About / Hint Text",
+            title: "1. About / Hint Text",
             subtitle: "Edit the scrolling hint text shown on home screen",
             onTap: () => _openAboutDialog(context),
           ),
@@ -2167,7 +2332,7 @@ class _AdminBannerScreenState extends State<AdminBannerScreen> {
           /// CAROUSEL IMAGES
           configCard(
             icon: Icons.image_outlined,
-            title: "Carousel Images",
+            title: "2. Carousel Images",
             subtitle: "${carouselUrls.length} banner images configured",
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -2245,20 +2410,31 @@ class _AdminBannerScreenState extends State<AdminBannerScreen> {
           /// POPULAR CONTENT
           configCard(
             icon: Icons.star_outline,
-            title: "Popular Courses & Books",
+            title: "3. Popular Courses & Books",
             subtitle: "Select 3 popular courses and books for home screen",
             onTap: () => _openPopularDialog(context),
           ),
 
-          const SizedBox(height: 20),
+          const SizedBox(height: 10),
+          configCard(
+            icon: Icons.category_outlined,
+            title: "4. Categories",
+            subtitle: "${categories.length} categories configured",
+            onTap: () => _openCategoryDialog(context),
+          ),
+          const SizedBox(height: 10),
 
           /// SAVE
           ElevatedButton(
-            onPressed: saveData,
+            onPressed: () async {
+              await saveData();
+              await syncCategories();
+            },
             style: ElevatedButton.styleFrom(
               padding: const EdgeInsets.symmetric(vertical: 14),
+
               shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(14),
+                borderRadius: BorderRadius.circular(8),
               ),
             ),
             child: const Text("Save Changes"),
