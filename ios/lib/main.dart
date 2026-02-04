@@ -404,45 +404,65 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
   late AnimationController _marqueeController;
   late Animation<double> _marqueeAnimation;
   String aboutText = "";
-  List<String> bannerImages = [];
-  bool bannerLoading = true;
+List<String> bannerImages = [];
+bool bannerLoading = true;
 
-  bool loadingHome = true;
-
-  List<Map<String, dynamic>> allCourses = [];
-  List<Map<String, dynamic>> allBooks = [];
-
-  List<Map<String, dynamic>> popularCourses = [];
-  List<Map<String, dynamic>> popularBooks = [];
-
-  final List<Map<String, String>> notifications = [
+  
+  final List<Map<String, String>> popularCourses = [
     {
-      "title": "MD Medicine – Clinical Q&A Series",
-      "time": "Yesterday",
-      "msg": "Course updated with 10 new videos.",
+      "title": "DM Cardiology – Complete Video Course",
+      "views": "12.4K learners",
+      "meta": "120 videos • 40 PDFs • 6 months access",
+      "price": "₹3,499",
+      "thumbnail": "assets/thumbnail1.avif",
     },
-    {
-      "title": "Essentials of Cardiology – DM & DrNB Notes",
-      "time": "2 hrs ago",
-      "msg": "New Books list available. Check  now.",
-    },
-
     {
       "title": "MBBS Anatomy – Video & Notes",
-      "time": "2 days ago",
-      "msg": "Newly Launched Course! Enroll today.",
+      "views": "8.1K learners",
+      "meta": "80 videos • 25 PDFs • Lifetime access",
+      "price": "₹9,499",
+      "thumbnail": "assets/thumbnail2.jpg",
     },
     {
-      "title": "Radiology – Image Based Question & Answer Book",
-      "time": "3 days ago",
-      "msg": "Special discount on selected books.",
+      "title": "MD Medicine – Clinical Q&A Series",
+      "views": "37.9K learners",
+      "meta": "150 videos • Case discussions",
+      "price": "₹14,999",
+      "thumbnail": "assets/thumbnail3.webp",
     },
   ];
+
+  final List<Map<String, String>> popularCourses2 = [
+    {
+      "title": "Essentials of Cardiology – DM & DrNB Notes",
+      "views": "11.2K readers",
+      "meta": "410 Pages • PDF • Concept-focused",
+      "price": "₹3,999",
+      "thumbnail": "assets/thumbnail11.jpg",
+    },
+
+    {
+      "title": "Radiology – Image Based Question & Answer Book",
+      "views": "8.9K readers",
+      "meta": "280 Pages • PDF • Image-centric",
+      "price": "₹2,499",
+      "thumbnail": "assets/thumbnail33.jpg",
+    },
+    {
+      "title": "Paediatrics – Rapid Review Handbook",
+      "views": "23.1K readers",
+      "meta": "240 Pages • PDF • Quick revision",
+      "price": "₹1,899",
+      "thumbnail": "assets/thumbnail44.webp",
+    },
+  ];
+
+  
 
   @override
   void initState() {
     super.initState();
-    _initHomeData();
+     fetchBannerData();
 
     _marqueeController = AnimationController(
       duration: const Duration(seconds: 22), // slower & smoother
@@ -465,254 +485,38 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     super.dispose();
   }
 
-  Future<void> _initHomeData() async {
-    try {
-      final bannerRes = await http.get(
-        Uri.parse("https://api.chandus7.in/api/infumedz/app-banner/"),
-      );
-
-      final coursesRes = await http.get(
-        Uri.parse("https://api.chandus7.in/api/infumedz/courses/"),
-      );
-
-      final booksRes = await http.get(
-        Uri.parse("https://api.chandus7.in/api/infumedz/books/"),
-      );
-
-      final banner = jsonDecode(bannerRes.body);
-      final courses = List<Map<String, dynamic>>.from(
-        jsonDecode(coursesRes.body),
-      );
-
-      final books = List<Map<String, dynamic>>.from(jsonDecode(booksRes.body));
-
-      final List<String> popularCourseIds = List<String>.from(
-        banner["popular_courses"] ?? [],
-      );
-
-      final List<String> popularBookIds = List<String>.from(
-        banner["popular_books"] ?? [],
-      );
-
-      /// 🔹 FILTER COURSES BASED ON IDS
-      final filteredCourses = courses
-          .where((c) => popularCourseIds.contains(c["id"]))
-          .toList();
-
-      /// 🔹 FILTER BOOKS BASED ON IDS
-      final filteredBooks = books
-          .where((b) => popularBookIds.contains(b["id"]))
-          .toList();
-
-      setState(() {
-        aboutText = banner["about_text"] ?? "";
-        bannerImages = List<String>.from(banner["carousel_urls"] ?? []);
-
-        allCourses = courses;
-        allBooks = books;
-
-        popularCourses = filteredCourses;
-        popularBooks = filteredBooks;
-        print(popularCourses);
-        print("-------------------------------------------------------------0");
-
-        loadingHome = false;
-      });
-    } catch (e) {
-      loadingHome = false;
-      debugPrint("Home load error: $e");
-    }
-  }
-
-  void _showNotificationPanel() {
-    showGeneralDialog(
-      context: context,
-      barrierDismissible: true,
-      barrierLabel: '',
-      barrierColor: Colors.black.withOpacity(0.35), // Background blur
-      transitionDuration: const Duration(milliseconds: 350),
-      pageBuilder: (_, __, ___) {
-        return Align(
-          alignment: Alignment.topCenter,
-          child: Material(
-            color: Colors.transparent,
-            child: Container(
-              height: MediaQuery.of(context).size.height * 0.55,
-              width: MediaQuery.of(context).size.width * 0.95,
-              padding: const EdgeInsets.all(18),
-              margin: const EdgeInsets.only(top: 60),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(22),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.08),
-                    blurRadius: 15,
-                    offset: const Offset(0, 5),
-                  ),
-                ],
-              ),
-
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // ------- HEADER -------
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      const Text(
-                        "🔔 Notifications",
-                        style: TextStyle(
-                          fontSize: 20,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                      TextButton(
-                        onPressed: () {
-                          notifications.clear();
-                          Navigator.pop(context);
-                          setState(() {});
-                        },
-                        child: const Text(
-                          "Clear All",
-                          style: TextStyle(color: Colors.red, fontSize: 13),
-                        ),
-                      ),
-                    ],
-                  ),
-
-                  //    const SizedBox(height: 8),
-                  Expanded(
-                    child: notifications.isEmpty
-                        ? const Center(
-                            child: Text(
-                              "No notifications yet",
-                              style: TextStyle(
-                                fontSize: 14,
-                                color: Colors.grey,
-                              ),
-                            ),
-                          )
-                        : ListView.separated(
-                            itemCount: notifications.length,
-                            separatorBuilder: (_, __) =>
-                                const SizedBox(height: 12),
-                            itemBuilder: (_, index) {
-                              final item = notifications[index];
-                              return Container(
-                                padding: const EdgeInsets.all(14),
-                                decoration: BoxDecoration(
-                                  color: const Color(0xFFEFF6FF),
-                                  borderRadius: BorderRadius.circular(16),
-                                  border: Border.all(
-                                    color: Colors.grey.shade300,
-                                    width: 0.8,
-                                  ),
-                                ),
-                                child: Row(
-                                  children: [
-                                    Container(
-                                      padding: const EdgeInsets.all(8),
-                                      decoration: BoxDecoration(
-                                        color: const Color(
-                                          0xFF0057C1,
-                                        ).withOpacity(0.18),
-                                        shape: BoxShape.circle,
-                                      ),
-                                      child: const Icon(
-                                        Icons.notifications_active,
-                                        color: Color(0xFF0057C1),
-                                      ),
-                                    ),
-                                    const SizedBox(width: 12),
-                                    Expanded(
-                                      child: Column(
-                                        crossAxisAlignment:
-                                            CrossAxisAlignment.start,
-                                        children: [
-                                          Text(
-                                            item["title"]!,
-                                            style: const TextStyle(
-                                              fontSize: 13,
-                                              fontWeight: FontWeight.w700,
-                                            ),
-                                          ),
-                                          const SizedBox(height: 4),
-                                          Text(
-                                            item["msg"]!,
-                                            style: TextStyle(
-                                              fontSize: 12,
-                                              height: 1.25,
-                                              color: Colors.grey.shade700,
-                                            ),
-                                          ),
-                                          const SizedBox(height: 6),
-                                          Text(
-                                            item["time"]!,
-                                            style: TextStyle(
-                                              fontSize: 11,
-                                              color: Colors.grey.shade500,
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              );
-                            },
-                          ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        );
-      },
-
-      // Slide down animation
-      transitionBuilder: (_, anim, __, child) {
-        return SlideTransition(
-          position: Tween<Offset>(
-            begin: const Offset(0, -1),
-            end: Offset.zero,
-          ).animate(CurvedAnimation(parent: anim, curve: Curves.easeOutCubic)),
-          child: Opacity(opacity: anim.value, child: child),
-        );
-      },
-    );
-  }
-
   Future<void> fetchBannerData() async {
-    try {
-      final res = await http.get(
-        Uri.parse("https://api.chandus7.in/api/infumedz/app-banner/"),
-      );
+  try {
+    final res = await http.get(
+      Uri.parse("https://api.chandus7.in/api/infumedz/app-banner/"),
+    );
 
-      final data = jsonDecode(res.body);
+    final data = jsonDecode(res.body);
 
-      setState(() {
-        aboutText = data["about_text"]?.toString() ?? "";
+    setState(() {
+      aboutText = data["about_text"]?.toString() ?? "";
 
-        final rawUrls = data["carousel_urls"];
-        if (rawUrls is List) {
-          bannerImages = rawUrls.whereType<String>().toList();
-        } else {
-          bannerImages = [];
-        }
+      final rawUrls = data["carousel_urls"];
+      if (rawUrls is List) {
+        bannerImages = rawUrls.whereType<String>().toList();
+      } else {
+        bannerImages = [];
+      }
 
-        bannerLoading = false;
-      });
-    } catch (e) {
       bannerLoading = false;
-      debugPrint("Banner fetch failed: $e");
-    }
+    });
+  } catch (e) {
+    bannerLoading = false;
+    debugPrint("Banner fetch failed: $e");
   }
+}
+
 
   Widget _buildMarquee() {
-    final text = aboutText.isNotEmpty
-        ? aboutText
-        : "Welcome to InfuMedz Medical Learning Platform";
+   final text = aboutText.isNotEmpty
+    ? aboutText
+    : "Welcome to InfuMedz Medical Learning Platform";
+
 
     return Container(
       height: 32,
@@ -797,19 +601,20 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     );
   }
 
-  void _autoScroll() {
-    if (!mounted || bannerImages.isEmpty) return;
+ void _autoScroll() {
+  if (!mounted || bannerImages.isEmpty) return;
 
-    _currentIndex = (_currentIndex + 1) % bannerImages.length;
+  _currentIndex = (_currentIndex + 1) % bannerImages.length;
 
-    _controller.animateToPage(
-      _currentIndex,
-      duration: const Duration(milliseconds: 2800),
-      curve: Curves.easeInOutCubic,
-    );
+  _controller.animateToPage(
+    _currentIndex,
+    duration: const Duration(milliseconds: 2800),
+    curve: Curves.easeInOutCubic,
+  );
 
-    Future.delayed(const Duration(seconds: 4), _autoScroll);
-  }
+  Future.delayed(const Duration(seconds: 4), _autoScroll);
+}
+
 
   @override
   Widget build(BuildContext context) {
@@ -870,23 +675,20 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
               ),
 
               // RIGHT: NOTIFICATION / PROFILE
-              InkWell(
-                onTap: _showNotificationPanel,
-                child: Container(
-                  padding: const EdgeInsets.all(2),
-                  decoration: const BoxDecoration(
-                    shape: BoxShape.circle,
-                    gradient: LinearGradient(
-                      colors: [Color(0xFF4F46E5), Color(0xFF06B6D4)],
-                    ),
+              Container(
+                padding: const EdgeInsets.all(2),
+                decoration: const BoxDecoration(
+                  shape: BoxShape.circle,
+                  gradient: LinearGradient(
+                    colors: [Color(0xFF4F46E5), Color(0xFF06B6D4)],
                   ),
-                  child: const CircleAvatar(
-                    radius: 20,
-                    backgroundColor: Colors.white,
-                    child: Icon(
-                      Icons.notifications_none_rounded,
-                      color: Colors.black87,
-                    ),
+                ),
+                child: const CircleAvatar(
+                  radius: 20,
+                  backgroundColor: Colors.white,
+                  child: Icon(
+                    Icons.notifications_none_rounded,
+                    color: Colors.black87,
                   ),
                 ),
               ),
@@ -961,7 +763,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
             height: 200,
             child: PageView.builder(
               controller: _controller,
-              itemCount: bannerImages.length,
+itemCount: bannerImages.length,
               onPageChanged: (i) {
                 setState(() => _currentIndex = i);
               },
@@ -978,16 +780,18 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                       children: [
                         // 🖼 IMAGE
                         bannerImages.isEmpty
-                            ? const SizedBox()
-                            : ClipRRect(
-                                borderRadius: BorderRadius.circular(10),
-                                child: Image.network(
-                                  bannerImages[index],
-                                  fit: BoxFit.cover,
-                                  errorBuilder: (_, __, ___) =>
-                                      Container(color: Colors.grey.shade300),
-                                ),
-                              ),
+    ? const SizedBox()
+    : ClipRRect(
+        borderRadius: BorderRadius.circular(10),
+        child: Image.network(
+          bannerImages[index],
+          fit: BoxFit.cover,
+          errorBuilder: (_, __, ___) => Container(
+            color: Colors.grey.shade300,
+          ),
+        ),
+      ),
+
 
                         // 🌫 DARK GRADIENT OVERLAY
                         // Container(
@@ -1076,42 +880,44 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
           ),
 
           const SizedBox(height: 12),
-
           /// 🔹 FULL-WIDTH CATEGORY CARDS (HIGHLIGHTED)
-          Column(
-            children: [
-              GestureDetector(
-                onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (_) => ThesisAssistanceScreen()),
-                  );
-                },
-                child: Container(
-                  margin: const EdgeInsets.only(bottom: 12),
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(14),
-                    gradient: const LinearGradient(
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                      colors: [
+Column(
+  children: [
+    GestureDetector(
+      onTap: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => ThesisAssistanceScreen(),
+          ),
+        );
+      },
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 12),
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(14),
+          gradient: const LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+           colors: [
                         Color(0xFFEAF3FF), // soft medical blue
                         Color(0xFFFFFFFF),
                       ],
-                    ),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(0.15),
-                        blurRadius: 12,
-                        offset: const Offset(0, 6),
-                      ),
-                    ],
-                  ),
-                  child: Row(
-                    children: [
-                      /// ICON
-                      Container(
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.15),
+              blurRadius: 12,
+              offset: const Offset(0, 6),
+            ),
+          ],
+        ),
+        child: Row(
+          children: [
+
+            /// ICON
+            Container(
                         height: 42,
                         width: 42,
                         decoration: BoxDecoration(
@@ -1125,45 +931,47 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                         ),
                       ),
 
-                      const SizedBox(width: 14),
+            const SizedBox(width: 14),
 
-                      /// TEXT (FIXED NAME)
-                      const Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              "Thesis Assistance",
-                              style: TextStyle(
-                                fontSize: 18,
-                                fontWeight: FontWeight.w700,
-                                color: Color(0xFF1F3C68),
-                              ),
-                            ),
-                            SizedBox(height: 4),
-                            Text(
-                              "Explore Publication",
-                              style: TextStyle(
-                                fontSize: 13,
-                                color: Color(0xFF1F3C68),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-
-                      /// ARROW
-                      Icon(
-                        Icons.arrow_forward_ios,
-                        size: 16,
-                        color: Colors.white,
-                      ),
-                    ],
+            /// TEXT (FIXED NAME)
+            const Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    "Thesis Assistance",
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w700,
+                  color: Color(0xFF1F3C68),
+                    ),
                   ),
-                ),
+                  SizedBox(height: 4),
+                  Text(
+                    "Explore Publication",
+                    style: TextStyle(
+                      fontSize: 13,
+                    color: Color(0xFF1F3C68),
+                    ),
+                  ),
+                ],
               ),
-            ],
-          ),
+            ),
+
+            /// ARROW
+            Icon(
+              Icons.arrow_forward_ios,
+              size: 16,
+              color: Colors.white,
+            ),
+          ],
+        ),
+      ),
+    ),
+  ],
+),
+
+
 
           GridView.builder(
             shrinkWrap: true,
@@ -1287,234 +1095,44 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
           const SizedBox(height: 12),
 
           /// Courses
-          /// ---------------- POPULAR COURSES ----------------
           const Text(
             "Popular Courses",
             style: TextStyle(fontSize: 20, fontWeight: FontWeight.w600),
           ),
-          const SizedBox(height: 6),
+          const SizedBox(height: 2),
 
-          ...popularCourses.map((course) {
-            final thumbnail =
-                (course["thumbnail_url"] != null &&
-                    course["thumbnail_url"].toString().isNotEmpty)
-                ? course["thumbnail_url"]
-                : "https://via.placeholder.com/300x180.png?text=No+Image";
+          ...List.generate(popularCourses.length, (i) {
+            final course = popularCourses[i];
 
-            return InkWell(
-              onTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) => CourseDetailScreen(
-                      data: course, // ✅ FULL COURSE MAP
-                      option: "course", // 👈 identify type
-                    ),
-                  ),
-                );
-              },
-              child: Padding(
-                padding: const EdgeInsets.symmetric(vertical: 8),
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // 🖼 Thumbnail
-                    ClipRRect(
-                      borderRadius: BorderRadius.circular(6),
-                      child: Stack(
-                        alignment: Alignment.center,
-                        children: [
-                          Image.network(
-                            thumbnail,
-                            width: 140,
-                            height: 80,
-                            fit: BoxFit.cover,
-                            errorBuilder: (_, __, ___) => Container(
-                              width: 140,
-                              height: 80,
-                              color: Colors.grey.shade300,
-                              child: const Icon(Icons.image_not_supported),
-                            ),
-                          ),
-                          Container(
-                            width: 140,
-                            height: 80,
-                            color: Colors.black.withOpacity(0.15),
-                          ),
-                          Container(
-                            width: 36,
-                            height: 36,
-                            decoration: BoxDecoration(
-                              color: Colors.black.withOpacity(0.55),
-                              shape: BoxShape.circle,
-                            ),
-                            child: const Icon(
-                              Icons.play_arrow,
-                              color: Colors.white,
-                              size: 22,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-
-                    const SizedBox(width: 12),
-
-                    // 📄 Details
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            course["title"] ?? "",
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(
-                              fontSize: 14.5,
-                              fontWeight: FontWeight.w600,
-                              color: Color(0xFF1F3C68),
-                            ),
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            "${course["videos"]?.length ?? 0} videos • Full access",
-                            style: const TextStyle(
-                              fontSize: 12,
-                              color: Colors.black45,
-                            ),
-                          ),
-                          const SizedBox(height: 6),
-                          Text(
-                            "₹${course["price"] ?? ""}",
-                            style: const TextStyle(
-                              fontSize: 14,
-                              fontWeight: FontWeight.bold,
-                              color: Color(0xFF0E5FD8),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              ),
+            return YoutubeStyleCourseCard(
+              title: course["title"]!,
+              views: course["views"]!,
+              meta: course["meta"]!,
+              price: course["price"]!,
+              thumbnail: course["thumbnail"]!,
+              onTap: () {},
             );
-          }).toList(),
+          }),
+          const SizedBox(height: 12),
 
-          /// ---------------- POPULAR BOOKS ----------------
-          const SizedBox(height: 14),
+          /// Courses
           const Text(
-            "Popular Books",
+            "Popular Boooks",
             style: TextStyle(fontSize: 20, fontWeight: FontWeight.w600),
           ),
-          const SizedBox(height: 6),
+          const SizedBox(height: 2),
 
-          ...popularBooks.map((book) {
-            final thumbnail =
-                (book["thumbnail_url"] != null &&
-                    book["thumbnail_url"].toString().isNotEmpty)
-                ? book["thumbnail_url"]
-                : "https://via.placeholder.com/300x180.png?text=No+Image";
+          ...List.generate(popularCourses2.length, (i) {
+            final course = popularCourses2[i];
 
-            return InkWell(
-              onTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) => CourseDetailScreen(
-                      data: book, // ✅ FULL BOOK MAP
-                      option: "book",
-                    ),
-                  ),
-                );
-              },
-              child: Padding(
-                padding: const EdgeInsets.symmetric(vertical: 8),
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // 🖼 Thumbnail
-                    ClipRRect(
-                      borderRadius: BorderRadius.circular(6),
-                      child: Stack(
-                        alignment: Alignment.center,
-                        children: [
-                          Image.network(
-                            thumbnail,
-                            width: 140,
-                            height: 80,
-                            fit: BoxFit.cover,
-                            errorBuilder: (_, __, ___) => Container(
-                              width: 140,
-                              height: 80,
-                              color: Colors.grey.shade300,
-                              child: const Icon(Icons.image_not_supported),
-                            ),
-                          ),
-                          Container(
-                            width: 140,
-                            height: 80,
-                            color: Colors.black.withOpacity(0.15),
-                          ),
-                          Container(
-                            width: 36,
-                            height: 36,
-                            decoration: BoxDecoration(
-                              color: Colors.black.withOpacity(0.55),
-                              shape: BoxShape.circle,
-                            ),
-                            child: const Icon(
-                              Icons.picture_as_pdf,
-                              color: Colors.white,
-                              size: 20,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-
-                    const SizedBox(width: 12),
-
-                    // 📄 Details
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            book["title"] ?? "",
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(
-                              fontSize: 14.5,
-                              fontWeight: FontWeight.w600,
-                              color: Color(0xFF1F3C68),
-                            ),
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            "${book["pdfs"]?.length ?? 0} PDFs • Digital Book",
-                            style: const TextStyle(
-                              fontSize: 12,
-                              color: Colors.black45,
-                            ),
-                          ),
-                          const SizedBox(height: 6),
-                          Text(
-                            "₹${book["price"] ?? ""}",
-                            style: const TextStyle(
-                              fontSize: 14,
-                              fontWeight: FontWeight.bold,
-                              color: Color(0xFF0E5FD8),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              ),
+            return YoutubeStyleCourseCard2(
+              title: course["title"]!,
+              views: course["views"]!,
+              meta: course["meta"]!,
+              price: course["price"]!,
+              thumbnail: course["thumbnail"]!,
             );
-          }).toList(),
+          }),
         ],
       ),
     );
@@ -1570,7 +1188,7 @@ class YoutubeStyleCourseCard extends StatelessWidget {
                   alignment: Alignment.center,
                   children: [
                     // Thumbnail Image
-                    Image.network(
+                    Image.asset(
                       thumbnail,
                       width: 140,
                       height: 80,
@@ -1714,14 +1332,25 @@ class YoutubeStyleCourseCard2 extends StatelessWidget {
           children: [
             // 🖼 Thumbnail (Left)
             InkWell(
-              onTap: () {},
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => PdfScreen(
+                      pdfUrl:
+                          "https://djangotestcase.s3.ap-south-1.amazonaws.com/medical/pdfs/54cfac91-079b-481d-8d8c-9916924954f0_CASTOR.pdf",
+                      title: title,
+                    ),
+                  ),
+                );
+              },
               child: ClipRRect(
                 borderRadius: BorderRadius.circular(6),
                 child: Stack(
                   alignment: Alignment.center,
                   children: [
                     // Thumbnail Image
-                    Image.network(
+                    Image.asset(
                       thumbnail,
                       width: 140,
                       height: 80,
@@ -2148,6 +1777,7 @@ final libraryPdfs = [
   },
 ];
 
+
 class FavouritesPage extends StatelessWidget {
   const FavouritesPage({super.key});
   @override
@@ -2160,3 +1790,6 @@ class ProfilePage extends StatelessWidget {
   @override
   Widget build(BuildContext context) => const Center(child: Text("Profile"));
 }
+
+
+

@@ -12,6 +12,8 @@ import 'package:infumedz/main.dart';
 import 'package:path/path.dart' as path;
 import 'package:animate_do/animate_do.dart';
 
+
+
 class AdminPanelHome extends StatelessWidget {
   const AdminPanelHome({super.key});
 
@@ -1145,6 +1147,7 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
           style: TextStyle(fontWeight: FontWeight.w700),
         ),
         actions: [
+         
           const SizedBox(width: 8),
           const CircleAvatar(
             backgroundColor: Colors.white,
@@ -1156,167 +1159,162 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
 
       /// 🔹 BODY
       body: SingleChildScrollView(
-        padding: const EdgeInsets.all(20),
+  padding: const EdgeInsets.all(20),
+  child: Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+
+      /// ===== ADMIN HEADER =====
+      Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Row(
+            children: [
+              CircleAvatar(
+                radius: 26,
+                backgroundColor: Colors.indigo.shade100,
+                child: const Icon(Icons.person, size: 30, color: Colors.indigo),
+              ),
+              const SizedBox(width: 12),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: const [
+                  Text(
+                    "Akif Ahamad",
+                    style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700),
+                  ),
+                  Text(
+                    "Welcome back, Administrator",
+                    style: TextStyle(color: Colors.grey),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ],
+      ),
+
+      const SizedBox(height: 30),
+
+      /// ===== KPI ROW =====
+      Row(
+        children: const [
+          _DashboardMetric(
+            title: "Total Users",
+            value: "2,430",
+            icon: Icons.people,
+            color: Colors.blue,
+          ),
+          SizedBox(width: 12),
+          _DashboardMetric(
+            title: "Total Courses",
+            value: "42",
+            icon: Icons.play_circle,
+            color: Colors.green,
+          ),
+        ],
+      ),
+
+      const SizedBox(height: 14),
+
+      Row(
+        children: const [
+          _DashboardMetric(
+            title: "Orders",
+            value: "128",
+            icon: Icons.shopping_cart,
+            color: Colors.orange,
+          ),
+          SizedBox(width: 12),
+          _DashboardMetric(
+            title: "Requests",
+            value: "36",
+            icon: Icons.article,
+            color: Colors.purple,
+          ),
+        ],
+      ),
+
+      const SizedBox(height: 30),
+
+      /// ===== ANALYTICS TITLE =====
+      const Text(
+        "Analytics Overview",
+        style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
+      ),
+
+      const SizedBox(height: 16),
+
+      /// ===== CHART CARD =====
+      Container(
+        height: 220,
+        padding: const EdgeInsets.all(16),
+        decoration: _cardDecoration(),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            /// ===== ADMIN HEADER =====
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Row(
-                  children: [
-                    CircleAvatar(
-                      radius: 26,
-                      backgroundColor: Colors.indigo.shade100,
-                      child: const Icon(
-                        Icons.person,
-                        size: 30,
-                        color: Colors.indigo,
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: const [
-                        Text(
-                          "Akif Ahamad",
-                          style: TextStyle(
-                            fontSize: 20,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                        Text(
-                          "Welcome back, Administrator",
-                          style: TextStyle(color: Colors.grey),
-                        ),
+            const Text(
+              "User Growth",
+              style: TextStyle(fontWeight: FontWeight.w600),
+            ),
+            const SizedBox(height: 12),
+            Expanded(
+              child: LineChart(
+                LineChartData(
+                  gridData: FlGridData(show: false),
+                  titlesData: FlTitlesData(show: false),
+                  borderData: FlBorderData(show: false),
+                  lineBarsData: [
+                    LineChartBarData(
+                      spots: const [
+                        FlSpot(0, 1),
+                        FlSpot(1, 2),
+                        FlSpot(2, 1.5),
+                        FlSpot(3, 3),
+                        FlSpot(4, 3.8),
                       ],
-                    ),
+                      isCurved: true,
+                      barWidth: 4,
+                      dotData: FlDotData(show: false),
+                      color: Colors.indigo,
+                    )
                   ],
                 ),
-              ],
-            ),
-
-            const SizedBox(height: 30),
-
-            /// ===== KPI ROW =====
-            Row(
-              children: const [
-                _DashboardMetric(
-                  title: "Total Users",
-                  value: "2,430",
-                  icon: Icons.people,
-                  color: Colors.blue,
-                ),
-                SizedBox(width: 12),
-                _DashboardMetric(
-                  title: "Total Courses",
-                  value: "42",
-                  icon: Icons.play_circle,
-                  color: Colors.green,
-                ),
-              ],
-            ),
-
-            const SizedBox(height: 14),
-
-            Row(
-              children: const [
-                _DashboardMetric(
-                  title: "Orders",
-                  value: "128",
-                  icon: Icons.shopping_cart,
-                  color: Colors.orange,
-                ),
-                SizedBox(width: 12),
-                _DashboardMetric(
-                  title: "Requests",
-                  value: "36",
-                  icon: Icons.article,
-                  color: Colors.purple,
-                ),
-              ],
-            ),
-
-            const SizedBox(height: 30),
-
-            /// ===== ANALYTICS TITLE =====
-            const Text(
-              "Analytics Overview",
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
-            ),
-
-            const SizedBox(height: 16),
-
-            /// ===== CHART CARD =====
-            Container(
-              height: 220,
-              padding: const EdgeInsets.all(16),
-              decoration: _cardDecoration(),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    "User Growth",
-                    style: TextStyle(fontWeight: FontWeight.w600),
-                  ),
-                  const SizedBox(height: 12),
-                  Expanded(
-                    child: LineChart(
-                      LineChartData(
-                        gridData: FlGridData(show: false),
-                        titlesData: FlTitlesData(show: false),
-                        borderData: FlBorderData(show: false),
-                        lineBarsData: [
-                          LineChartBarData(
-                            spots: const [
-                              FlSpot(0, 1),
-                              FlSpot(1, 2),
-                              FlSpot(2, 1.5),
-                              FlSpot(3, 3),
-                              FlSpot(4, 3.8),
-                            ],
-                            isCurved: true,
-                            barWidth: 4,
-                            dotData: FlDotData(show: false),
-                            color: Colors.indigo,
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ],
               ),
-            ),
-
-            const SizedBox(height: 30),
-
-            /// ===== RECENT ACTIVITY =====
-            const Text(
-              "Recent Activity",
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
-            ),
-
-            const SizedBox(height: 16),
-
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: _cardDecoration(),
-              child: Column(
-                children: const [
-                  _ActivityTile("New User Registered", "2 mins ago"),
-                  Divider(),
-                  _ActivityTile("Course Purchased", "10 mins ago"),
-                  Divider(),
-                  _ActivityTile("Thesis Request Submitted", "1 hour ago"),
-                ],
-              ),
-            ),
-
-            const SizedBox(height: 100),
+            )
           ],
         ),
       ),
+
+      const SizedBox(height: 30),
+
+      /// ===== RECENT ACTIVITY =====
+      const Text(
+        "Recent Activity",
+        style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
+      ),
+
+      const SizedBox(height: 16),
+
+      Container(
+        padding: const EdgeInsets.all(16),
+        decoration: _cardDecoration(),
+        child: Column(
+          children: const [
+            _ActivityTile("New User Registered", "2 mins ago"),
+            Divider(),
+            _ActivityTile("Course Purchased", "10 mins ago"),
+            Divider(),
+            _ActivityTile("Thesis Request Submitted", "1 hour ago"),
+          ],
+        ),
+      ),
+
+      const SizedBox(height: 100),
+    ],
+  ),
+),
+
 
       /// 🔹 FLOATING ACTION MENU
       floatingActionButton: _buildExpandableFab(),
@@ -1332,7 +1330,7 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
           GestureDetector(
             onTap: () => setState(() => fabOpen = false),
             child: Container(
-              // color: Colors.black.withOpacity(0.2),
+             // color: Colors.black.withOpacity(0.2),
               width: double.infinity,
               height: double.infinity,
             ),
@@ -1343,11 +1341,14 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
           right: 16,
           child: Column(
             children: [
-              if (fabOpen) _fabOption(Icons.add, "Add Courses"),
-
-              if (fabOpen) _fabOption(Icons.picture_as_pdf, "Add Books"),
               if (fabOpen)
+                _fabOption(Icons.add, "Add Courses"),
+              
+              if (fabOpen)
+                _fabOption(Icons.picture_as_pdf, "Add Books"),
+                if (fabOpen)
                 _fabOption(Icons.published_with_changes, "Data Replace"),
+           
             ],
           ),
         ),
@@ -1373,21 +1374,25 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
         heroTag: label,
         backgroundColor: Colors.white,
         onPressed: () {
-          if (icon == Icons.add) {
+          if(icon == Icons.add){
             Navigator.push(
-              context,
-              MaterialPageRoute(builder: (_) => const AdminCourseFlow()),
-            );
-          } else if (icon == Icons.picture_as_pdf) {
+                context,
+                MaterialPageRoute(builder: (_) => const AdminCourseFlow()),
+              );
+           
+    
+          }else if(icon == Icons.picture_as_pdf){
             Navigator.push(
-              context,
-              MaterialPageRoute(builder: (_) => const AdminBookFlow()),
-            );
-          } else {
+                context,
+                MaterialPageRoute(builder: (_) => const AdminBookFlow()),
+              );
+    
+          }else{
             Navigator.push(
-              context,
-              MaterialPageRoute(builder: (_) => const AdminBannerScreen()),
-            );
+                context,
+                MaterialPageRoute(builder: (_) => const AdminBannerScreen()),
+              );
+    
           }
         },
         icon: Icon(icon, color: const Color(0xFF0E5FD8)),
@@ -1402,6 +1407,7 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
     );
   }
 }
+
 
 class _StatCard extends StatelessWidget {
   final String title;
@@ -1423,7 +1429,10 @@ class _StatCard extends StatelessWidget {
           color: Colors.white,
           borderRadius: BorderRadius.circular(14),
           boxShadow: [
-            BoxShadow(color: Colors.black.withOpacity(0.08), blurRadius: 12),
+            BoxShadow(
+              color: Colors.black.withOpacity(0.08),
+              blurRadius: 12,
+            ),
           ],
         ),
         child: Column(
@@ -1433,16 +1442,23 @@ class _StatCard extends StatelessWidget {
             const SizedBox(height: 12),
             Text(
               value,
-              style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w800),
+              style: const TextStyle(
+                fontSize: 22,
+                fontWeight: FontWeight.w800,
+              ),
             ),
             const SizedBox(height: 4),
-            Text(title, style: const TextStyle(color: Colors.black54)),
+            Text(
+              title,
+              style: const TextStyle(color: Colors.black54),
+            ),
           ],
         ),
       ),
     );
   }
 }
+
 
 class _DashboardMetric extends StatelessWidget {
   final String title;
@@ -1473,15 +1489,22 @@ class _DashboardMetric extends StatelessWidget {
             const SizedBox(height: 12),
             Text(
               value,
-              style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+              style: const TextStyle(
+                fontSize: 22,
+                fontWeight: FontWeight.bold,
+              ),
             ),
-            Text(title, style: const TextStyle(color: Colors.grey)),
+            Text(
+              title,
+              style: const TextStyle(color: Colors.grey),
+            ),
           ],
         ),
       ),
     );
   }
 }
+
 
 class _ActivityTile extends StatelessWidget {
   final String title;
@@ -1515,6 +1538,14 @@ BoxDecoration _cardDecoration() {
   );
 }
 
+
+
+
+
+
+
+
+
 class AdminBannerScreen extends StatefulWidget {
   const AdminBannerScreen({super.key});
 
@@ -1525,11 +1556,6 @@ class AdminBannerScreen extends StatefulWidget {
 class _AdminBannerScreenState extends State<AdminBannerScreen> {
   final aboutController = TextEditingController();
   final imageUrlController = TextEditingController();
-  List<Map<String, dynamic>> allCourses = [];
-  List<Map<String, dynamic>> allBooks = [];
-
-  List<String> popularCourseIds = [];
-  List<String> popularBookIds = [];
 
   List<String> carouselUrls = [];
   bool loading = true;
@@ -1541,7 +1567,6 @@ class _AdminBannerScreenState extends State<AdminBannerScreen> {
   void initState() {
     super.initState();
     fetchData();
-    fetchAdminData();
   }
 
   /* ================= FETCH ================= */
@@ -1556,7 +1581,8 @@ class _AdminBannerScreenState extends State<AdminBannerScreen> {
 
         final rawUrls = data["carousel_urls"];
         if (rawUrls is List) {
-          carouselUrls = rawUrls.whereType<String>().toList(); // 🔐 safe cast
+          carouselUrls =
+              rawUrls.whereType<String>().toList(); // 🔐 safe cast
         } else {
           carouselUrls = [];
         }
@@ -1565,501 +1591,94 @@ class _AdminBannerScreenState extends State<AdminBannerScreen> {
       });
     } catch (e) {
       loading = false;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text("Failed to load data: $e")));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Failed to load data: $e")),
+      );
     }
-  }
-
-  Future<void> fetchAdminData() async {
-    final bannerRes = await http.get(Uri.parse(apiUrl));
-    final coursesRes = await http.get(
-      Uri.parse("https://api.chandus7.in/api/infumedz/get/courses/"),
-    );
-    final booksRes = await http.get(
-      Uri.parse("https://api.chandus7.in/api/infumedz/books/"),
-    );
-
-    final banner = jsonDecode(bannerRes.body);
-    final courses = jsonDecode(coursesRes.body);
-    final books = jsonDecode(booksRes.body);
-
-    setState(() {
-      aboutController.text = banner["about_text"] ?? "";
-      carouselUrls = List<String>.from(banner["carousel_urls"] ?? []);
-
-      popularCourseIds = List<String>.from(banner["popular_courses"] ?? []);
-
-      popularBookIds = List<String>.from(banner["popular_books"] ?? []);
-
-      allCourses = List<Map<String, dynamic>>.from(courses);
-      allBooks = List<Map<String, dynamic>>.from(books);
-
-      loading = false;
-    });
   }
 
   /* ================= IMAGE UPLOAD ================= */
 
   Future<void> pickAndUploadImage() async {
-    final picked = await ImagePicker().pickImage(source: ImageSource.gallery);
+    final picked =
+        await ImagePicker().pickImage(source: ImageSource.gallery);
 
     if (picked == null) return;
 
     await uploadBannerImage(File(picked.path));
   }
 
-  Future<void> uploadBannerImage(File imageFile) async {
-    try {
-      setState(() => uploadingImage = true);
+Future<void> uploadBannerImage(File imageFile) async {
+  try {
+    setState(() => uploadingImage = true);
 
-      final request = http.MultipartRequest(
-        "POST",
-        Uri.parse(ApiConfig.uploadThumbnail),
-      );
+    final request = http.MultipartRequest(
+      "POST",
+      Uri.parse(ApiConfig.uploadThumbnail),
+    );
 
-      /// 🔑 FIELD NAME MUST BE `thumbnail`
-      request.files.add(
-        await http.MultipartFile.fromPath("thumbnail", imageFile.path),
-      );
+    /// 🔑 FIELD NAME MUST BE `thumbnail`
+    request.files.add(
+      await http.MultipartFile.fromPath(
+        "thumbnail",
+        imageFile.path,
+      ),
+    );
 
-      final response = await request.send();
-      final responseBody = await response.stream.transform(utf8.decoder).join();
+    final response = await request.send();
+    final responseBody =
+        await response.stream.transform(utf8.decoder).join();
 
-      if (response.statusCode != 200 && response.statusCode != 201) {
-        throw Exception("Upload failed: $responseBody");
-      }
-
-      final data = jsonDecode(responseBody);
-      final thumbnailUrl = data["thumbnail_url"];
-
-      if (thumbnailUrl == null) {
-        throw Exception("thumbnail_url missing in response");
-      }
-
-      /// ✅ Update UI ONLY
-      setState(() {
-        carouselUrls.add(thumbnailUrl);
-        uploadingImage = false;
-      });
-
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text("Image uploaded")));
-    } catch (e) {
-      setState(() => uploadingImage = false);
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text("Upload failed: $e")));
+    if (response.statusCode != 200 && response.statusCode != 201) {
+      throw Exception("Upload failed: $responseBody");
     }
-  }
 
-  void _openPopularDialog(BuildContext context) {
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (ctx) {
-        return StatefulBuilder(
-          builder: (context, setDialogState) {
-            return Dialog(
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(16),
-              ),
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: SingleChildScrollView(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      /// TITLE
-                      const Text(
-                        "Update Popular Content",
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
+    final data = jsonDecode(responseBody);
+    final thumbnailUrl = data["thumbnail_url"];
 
-                      const SizedBox(height: 16),
+    if (thumbnailUrl == null) {
+      throw Exception("thumbnail_url missing in response");
+    }
 
-                      /// COURSES
-                      const Text(
-                        "Popular Courses",
-                        style: TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 14,
-                        ),
-                      ),
-                      const SizedBox(height: 6),
+    /// ✅ Update UI ONLY
+    setState(() {
+      carouselUrls.add(thumbnailUrl);
+      uploadingImage = false;
+    });
 
-                      courseDropdownDialog(0, setDialogState),
-                      courseDropdownDialog(1, setDialogState),
-                      courseDropdownDialog(2, setDialogState),
-
-                      const SizedBox(height: 16),
-                      const Divider(),
-
-                      /// BOOKS
-                      const Text(
-                        "Popular Books",
-                        style: TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 14,
-                        ),
-                      ),
-                      const SizedBox(height: 6),
-
-                      bookDropdownDialog(0, setDialogState),
-                      bookDropdownDialog(1, setDialogState),
-                      bookDropdownDialog(2, setDialogState),
-
-                      const SizedBox(height: 20),
-
-                      /// ACTIONS
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.end,
-                        children: [
-                          TextButton(
-                            onPressed: () => Navigator.pop(context),
-                            child: const Text("Cancel"),
-                          ),
-                          const SizedBox(width: 8),
-                          ElevatedButton(
-                            onPressed: () {
-                              Navigator.pop(context);
-                            },
-                            child: const Text("Apply"),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            );
-          },
-        );
-      },
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text("Image uploaded")),
+    );
+  } catch (e) {
+    setState(() => uploadingImage = false);
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text("Upload failed: $e")),
     );
   }
+}
 
-  Widget courseDropdownDialog(
-    int index,
-    void Function(void Function()) setDialogState,
-  ) {
-    final value = index < popularCourseIds.length
-        ? popularCourseIds[index]
-        : null;
-
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 10),
-      child: DropdownButtonFormField<String>(
-        value: value,
-        isExpanded: true,
-        hint: Text("Select Popular Course ${index + 1}"),
-        items: allCourses.map((course) {
-          return DropdownMenuItem<String>(
-            value: course["id"],
-            child: Text(course["title"]),
-          );
-        }).toList(),
-        onChanged: (val) {
-          if (val == null) return;
-          setDialogState(() {
-            if (popularCourseIds.length <= index) {
-              popularCourseIds.add(val);
-            } else {
-              popularCourseIds[index] = val;
-            }
-          });
-        },
-      ),
-    );
-  }
-
-  Widget courseDropdown(int index) {
-    final value = index < popularCourseIds.length
-        ? popularCourseIds[index]
-        : null;
-
-    return Container(
-      margin: const EdgeInsets.only(bottom: 14),
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-      decoration: BoxDecoration(
-        color: const Color(0xFFF7FAFF),
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: const Color(0xFFD6E4FF)),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.04),
-            blurRadius: 8,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: DropdownButtonFormField<String>(
-        value: value,
-        isExpanded: true,
-        icon: const Icon(Icons.keyboard_arrow_down_rounded),
-        hint: Text(
-          "Select Popular Course ${index + 1}",
-          style: const TextStyle(
-            fontSize: 14,
-            color: Colors.black54,
-            fontWeight: FontWeight.w500,
-          ),
-        ),
-        decoration: const InputDecoration(
-          border: InputBorder.none,
-          contentPadding: EdgeInsets.zero,
-        ),
-        items: allCourses.map((course) {
-          return DropdownMenuItem<String>(
-            value: course["id"],
-            child: Row(
-              children: [
-                const Icon(Icons.school, size: 18, color: Color(0xFF0E5FD8)),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    course["title"],
-                    style: const TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w600,
-                      color: Color(0xFF1F3C68),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          );
-        }).toList(),
-        onChanged: (value) {
-          if (value == null) return;
-          setState(() {
-            if (popularCourseIds.length <= index) {
-              popularCourseIds.add(value);
-            } else {
-              popularCourseIds[index] = value;
-            }
-          });
-        },
-      ),
-    );
-  }
-
-  Widget bookDropdownDialog(
-    int index,
-    void Function(void Function()) setDialogState,
-  ) {
-    final value = index < popularBookIds.length ? popularBookIds[index] : null;
-
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 10),
-      child: DropdownButtonFormField<String>(
-        value: value,
-        isExpanded: true,
-        hint: Text("Select Popular Book ${index + 1}"),
-        items: allBooks.map((book) {
-          return DropdownMenuItem<String>(
-            value: book["id"],
-            child: Text(book["title"]),
-          );
-        }).toList(),
-        onChanged: (val) {
-          if (val == null) return;
-          setDialogState(() {
-            if (popularBookIds.length <= index) {
-              popularBookIds.add(val);
-            } else {
-              popularBookIds[index] = val;
-            }
-          });
-        },
-      ),
-    );
-  }
-
-  Widget bookDropdown(int index) {
-    final value = index < popularBookIds.length ? popularBookIds[index] : null;
-
-    return Container(
-      margin: const EdgeInsets.only(bottom: 14),
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-      decoration: BoxDecoration(
-        color: const Color(0xFFF7FAFF),
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: const Color(0xFFD6E4FF)),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.04),
-            blurRadius: 8,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: DropdownButtonFormField<String>(
-        value: value,
-        isExpanded: true,
-        icon: const Icon(Icons.keyboard_arrow_down_rounded),
-        hint: Text(
-          "Select Popular Book ${index + 1}",
-          style: const TextStyle(
-            fontSize: 14,
-            color: Colors.black54,
-            fontWeight: FontWeight.w500,
-          ),
-        ),
-        decoration: const InputDecoration(
-          border: InputBorder.none,
-          contentPadding: EdgeInsets.zero,
-        ),
-        items: allBooks.map((book) {
-          return DropdownMenuItem<String>(
-            value: book["id"],
-            child: Row(
-              children: [
-                const Icon(
-                  Icons.menu_book_rounded,
-                  size: 18,
-                  color: Color(0xFF0E5FD8),
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    book["title"],
-                    style: const TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w600,
-                      color: Color(0xFF1F3C68),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          );
-        }).toList(),
-        onChanged: (value) {
-          if (value == null) return;
-          setState(() {
-            if (popularBookIds.length <= index) {
-              popularBookIds.add(value);
-            } else {
-              popularBookIds[index] = value;
-            }
-          });
-        },
-      ),
-    );
-  }
-
-  void _openAboutDialog(BuildContext context) {
-    showDialog(
-      context: context,
-      barrierDismissible: false, // stays open until action
-      builder: (dialogContext) {
-        return Dialog(
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
-          ),
-          insetPadding: const EdgeInsets.symmetric(horizontal: 20),
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                /// TITLE
-                const Text(
-                  "Edit About / Hint Text",
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w700,
-                    color: Color(0xFF1F2937),
-                  ),
-                ),
-
-                const SizedBox(height: 10),
-
-                /// INFO
-                const Text(
-                  "This text appears as the scrolling hint on the home screen.",
-                  style: TextStyle(fontSize: 13, color: Color(0xFF6B7280)),
-                ),
-
-                const SizedBox(height: 12),
-
-                /// TEXT FIELD
-                TextField(
-                  controller: aboutController,
-                  maxLines: 5,
-                  decoration: InputDecoration(
-                    hintText: "Enter about text...",
-                    filled: true,
-                    fillColor: const Color(0xFFF8FAFC),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    enabledBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: const BorderSide(color: Color(0xFFE5E7EB)),
-                    ),
-                  ),
-                ),
-
-                const SizedBox(height: 16),
-
-                /// ACTION BUTTONS
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.end,
-                  children: [
-                    TextButton(
-                      onPressed: () {
-                        Navigator.of(dialogContext).pop(); // ✅ FIXED
-                      },
-                      child: const Text("Cancel"),
-                    ),
-                    const SizedBox(width: 8),
-                    ElevatedButton(
-                      onPressed: () {
-                        // only close dialog, saving happens later
-                        Navigator.of(dialogContext).pop(); // ✅ FIXED
-                      },
-                      style: ElevatedButton.styleFrom(
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                      ),
-                      child: const Text("Apply"),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-        );
-      },
-    );
-  }
 
   /* ================= SAVE ================= */
 
   Future<void> saveData() async {
-    await http.put(
-      Uri.parse(apiUrl),
-      headers: {"Content-Type": "application/json"},
-      body: jsonEncode({
-        "about_text": aboutController.text.trim(),
-        "carousel_urls": carouselUrls,
-        "popular_courses": popularCourseIds,
-        "popular_books": popularBookIds,
-      }),
-    );
+    try {
+      await http.put(
+        Uri.parse(apiUrl),
+        headers: {"Content-Type": "application/json"},
+        body: jsonEncode({
+          "about_text": aboutController.text.trim(),
+          "carousel_urls": carouselUrls,
+        }),
+      );
 
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(const SnackBar(content: Text("Saved successfully")));
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Saved successfully")),
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Save failed: $e")),
+      );
+    }
   }
 
   /* ================= UI HELPERS ================= */
@@ -2068,87 +1687,14 @@ class _AdminBannerScreenState extends State<AdminBannerScreen> {
     setState(() => carouselUrls.removeAt(index));
   }
 
-  Widget configCard({
-    required IconData icon,
-    required String title,
-    required String subtitle,
-    VoidCallback? onTap,
-    Widget? child,
-  }) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 16),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFE5E7EB)),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.04),
-            blurRadius: 10,
-            offset: const Offset(0, 6),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          /// HEADER ROW
-          InkWell(
-            onTap: onTap,
-            borderRadius: BorderRadius.circular(12),
-            child: Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(10),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF0E5FD8).withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Icon(icon, color: const Color(0xFF0E5FD8), size: 22),
-                ),
-                const SizedBox(width: 14),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        title,
-                        style: const TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w700,
-                          color: Color(0xFF1F2937),
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        subtitle,
-                        style: const TextStyle(
-                          fontSize: 13,
-                          color: Color(0xFF6B7280),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                if (onTap != null)
-                  const Icon(Icons.chevron_right, color: Color(0xFF9CA3AF)),
-              ],
-            ),
-          ),
-
-          if (child != null) ...[const SizedBox(height: 14), child],
-        ],
-      ),
-    );
-  }
-
   /* ================= UI ================= */
 
   @override
   Widget build(BuildContext context) {
     if (loading) {
-      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+      return const Scaffold(
+        body: Center(child: CircularProgressIndicator()),
+      );
     }
 
     return Scaffold(
@@ -2156,110 +1702,97 @@ class _AdminBannerScreenState extends State<AdminBannerScreen> {
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
-          /// ABOUT / HINT TEXT
-          configCard(
-            icon: Icons.info_outline,
-            title: "About / Hint Text",
-            subtitle: "Edit the scrolling hint text shown on home screen",
-            onTap: () => _openAboutDialog(context),
+          /// ABOUT TEXT
+          const Text(
+            "About / Hint Text",
+            style: TextStyle(fontWeight: FontWeight.bold),
           ),
-
-          /// CAROUSEL IMAGES
-          configCard(
-            icon: Icons.image_outlined,
-            title: "Carousel Images",
-            subtitle: "${carouselUrls.length} banner images configured",
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                /// PREVIEW
-                SizedBox(
-                  height: 150,
-                  child: carouselUrls.isEmpty
-                      ? const Center(child: Text("No images added"))
-                      : ListView.builder(
-                          scrollDirection: Axis.horizontal,
-                          itemCount: carouselUrls.length,
-                          itemBuilder: (_, i) {
-                            final url = carouselUrls[i];
-                            return Stack(
-                              children: [
-                                Container(
-                                  margin: const EdgeInsets.only(right: 12),
-                                  width: 240,
-                                  decoration: BoxDecoration(
-                                    borderRadius: BorderRadius.circular(14),
-                                    image: DecorationImage(
-                                      image: NetworkImage(url),
-                                      fit: BoxFit.cover,
-                                    ),
-                                  ),
-                                ),
-                                Positioned(
-                                  top: 8,
-                                  right: 8,
-                                  child: GestureDetector(
-                                    onTap: () => deleteImage(i),
-                                    child: const CircleAvatar(
-                                      radius: 14,
-                                      backgroundColor: Colors.red,
-                                      child: Icon(
-                                        Icons.delete,
-                                        size: 16,
-                                        color: Colors.white,
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            );
-                          },
-                        ),
-                ),
-
-                const SizedBox(height: 12),
-
-                /// ADD IMAGE BUTTON (SUBTLE)
-                SizedBox(
-                  width: double.infinity,
-                  child: OutlinedButton.icon(
-                    onPressed: uploadingImage ? null : pickAndUploadImage,
-                    icon: uploadingImage
-                        ? const SizedBox(
-                            width: 16,
-                            height: 16,
-                            child: CircularProgressIndicator(strokeWidth: 2),
-                          )
-                        : const Icon(Icons.add),
-                    label: Text(
-                      uploadingImage ? "Uploading..." : "Add Banner Image",
-                    ),
-                  ),
-                ),
-              ],
+          const SizedBox(height: 8),
+          TextField(
+            controller: aboutController,
+            maxLines: 5,
+            decoration: const InputDecoration(
+              border: OutlineInputBorder(),
+              hintText: "Enter about text...",
             ),
           ),
 
-          const SizedBox(height: 20),
+          const SizedBox(height: 24),
 
-          /// POPULAR CONTENT
-          configCard(
-            icon: Icons.star_outline,
-            title: "Popular Courses & Books",
-            subtitle: "Select 3 popular courses and books for home screen",
-            onTap: () => _openPopularDialog(context),
+          /// UPLOAD IMAGE
+          Row(
+            children: [
+              ElevatedButton.icon(
+                onPressed: uploadingImage ? null : pickAndUploadImage,
+                icon: const Icon(Icons.image),
+                label: Text(uploadingImage ? "Uploading..." : "Upload Image"),
+              ),
+            ],
           ),
 
           const SizedBox(height: 20),
 
-          /// SAVE
+          /// CAROUSEL PREVIEW
+          const Text(
+            "Carousel Images",
+            style: TextStyle(fontWeight: FontWeight.bold),
+          ),
+          const SizedBox(height: 10),
+
+          SizedBox(
+            height: 180,
+            child: carouselUrls.isEmpty
+                ? const Center(child: Text("No images"))
+                : ListView.builder(
+                    scrollDirection: Axis.horizontal,
+                    itemCount: carouselUrls.length,
+                    itemBuilder: (_, i) {
+                      final url = carouselUrls[i];
+
+                      return Stack(
+                        children: [
+                          Container(
+                            margin: const EdgeInsets.only(right: 12),
+                            width: 280,
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(12),
+                              color: Colors.grey.shade200,
+                              image: DecorationImage(
+                                image: NetworkImage(url),
+                                fit: BoxFit.cover,
+                                onError: (_, __) {},
+                              ),
+                            ),
+                          ),
+                          Positioned(
+                            top: 6,
+                            right: 6,
+                            child: GestureDetector(
+                              onTap: () => deleteImage(i),
+                              child: const CircleAvatar(
+                                backgroundColor: Colors.red,
+                                radius: 14,
+                                child: Icon(
+                                  Icons.delete,
+                                  size: 16,
+                                  color: Colors.white,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      );
+                    },
+                  ),
+          ),
+
+          const SizedBox(height: 30),
+
+          /// SAVE BUTTON
           ElevatedButton(
             onPressed: saveData,
             style: ElevatedButton.styleFrom(
-              padding: const EdgeInsets.symmetric(vertical: 14),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(14),
-              ),
+              padding: const EdgeInsets.all(14),
             ),
             child: const Text("Save Changes"),
           ),
