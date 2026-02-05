@@ -97,6 +97,30 @@ class AdminExpandableFab extends StatefulWidget {
 
 class _AdminExpandableFabState extends State<AdminExpandableFab> {
   bool fabOpen = false;
+  Widget _staggeredFabOption(int index, IconData icon, String label) {
+    const int baseDelayMs = 100; // 🔥 FAST stagger
+    final delay = Duration(milliseconds: baseDelayMs * index);
+
+    return AnimatedOpacity(
+      opacity: fabOpen ? 1 : 0,
+      duration: const Duration(milliseconds: 180),
+      curve: Curves.easeOut,
+      child: AnimatedSlide(
+        offset: fabOpen ? Offset.zero : const Offset(0, 0.4),
+        duration: const Duration(milliseconds: 220),
+        curve: Curves.easeOutCubic,
+        child: FutureBuilder(
+          future: fabOpen ? Future.delayed(delay) : Future.value(),
+          builder: (context, snapshot) {
+            if (fabOpen && snapshot.connectionState != ConnectionState.done) {
+              return const SizedBox.shrink();
+            }
+            return _fabOption(icon, label);
+          },
+        ),
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -118,11 +142,14 @@ class _AdminExpandableFabState extends State<AdminExpandableFab> {
           right: 16,
           child: Column(
             children: [
-              if (fabOpen) _fabOption(Icons.add, "Add Courses"),
-              if (fabOpen) _fabOption(Icons.picture_as_pdf, "Add Books"),
-
-              if (fabOpen)
-                _fabOption(Icons.published_with_changes, "Update Banner"),
+              _staggeredFabOption(3, Icons.add, "Add Courses"),
+              _staggeredFabOption(2, Icons.picture_as_pdf, "Add Books"),
+              _staggeredFabOption(1, Icons.delete, "Delete Content"),
+              _staggeredFabOption(
+                0,
+                Icons.published_with_changes,
+                "Update Banner",
+              ),
             ],
           ),
         ),
@@ -141,42 +168,59 @@ class _AdminExpandableFabState extends State<AdminExpandableFab> {
   }
 
   Widget _fabOption(IconData icon, String label) {
+    const double buttonWidth = 150; // 🔥 FIXED WIDTH
+    const double buttonHeight = 48; // 🔥 FIXED HEIGHT
+
     return Padding(
       padding: const EdgeInsets.only(bottom: 10),
-      child: FloatingActionButton.extended(
-        heroTag: label,
-        backgroundColor: Colors.white,
-        onPressed: () {
-          setState(() => fabOpen = false);
+      child: SizedBox(
+        width: buttonWidth,
+        height: buttonHeight,
+        child: Material(
+          color: Colors.white,
+          elevation: 6,
+          borderRadius: BorderRadius.circular(14),
+          child: InkWell(
+            borderRadius: BorderRadius.circular(14),
+            onTap: () {
+              setState(() => fabOpen = false);
 
-          if (label == "Add Courses") {
-            Navigator.push(
-              context,
-              MaterialPageRoute(builder: (_) => const AdminCourseFlow()),
-            );
-          } else if (label == "Add Books") {
-            Navigator.push(
-              context,
-              MaterialPageRoute(builder: (_) => const AdminBookFlow()),
-            );
-          } else if (label == "Delete Content") {
-            showDialog(
-              context: context,
-              builder: (_) => const AdminDeleteDialog(),
-            );
-          } else {
-            Navigator.push(
-              context,
-              MaterialPageRoute(builder: (_) => const AdminBannerScreen()),
-            );
-          }
-        },
-        icon: Icon(icon, color: const Color(0xFF0E5FD8)),
-        label: Text(
-          label,
-          style: const TextStyle(
-            color: Color(0xFF0E5FD8),
-            fontWeight: FontWeight.w600,
+              if (label == "Add Courses") {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const AdminCourseFlow()),
+                );
+              } else if (label == "Add Books") {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const AdminBookFlow()),
+                );
+              } else if (label == "Delete Content") {
+                showDialog(
+                  context: context,
+                  builder: (_) => const AdminDeleteDialog(),
+                );
+              } else {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const AdminBannerScreen()),
+                );
+              }
+            },
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(icon, color: const Color(0xFF0E5FD8)),
+                const SizedBox(width: 10),
+                Text(
+                  label,
+                  style: const TextStyle(
+                    color: Color(0xFF0E5FD8),
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       ),
@@ -270,42 +314,49 @@ class _NavItem extends StatelessWidget {
       onTap: () => onTap(index),
       behavior: HitTestBehavior.opaque,
       child: AnimatedContainer(
-        duration: const Duration(milliseconds: 300),
-        curve: Curves.easeOutBack,
+        duration: const Duration(milliseconds: 250),
+        curve: Curves.easeOut,
         padding: EdgeInsets.symmetric(
-          horizontal: isActive ? 18 : 12,
-          vertical: 8,
+          horizontal: isActive ? 14 : 10,
+          vertical: 3, // ⬅ reduced
         ),
         decoration: BoxDecoration(
           color: isActive
               ? const Color(0xFF0E5FD8).withOpacity(0.12)
               : Colors.transparent,
-          borderRadius: BorderRadius.circular(18),
+          borderRadius: BorderRadius.circular(14),
         ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
+            // ICON
             AnimatedScale(
-              scale: isActive ? 1.2 : 1.0,
-              duration: const Duration(milliseconds: 250),
+              scale: isActive ? 1.1 : 1.0, // ⬅ reduced scale
+              duration: const Duration(milliseconds: 100),
               child: Icon(
                 icon,
-                size: 26,
+                size: 24, // ⬅ smaller icon
                 color: isActive ? const Color(0xFF0E5FD8) : Colors.grey,
               ),
             ),
-            const SizedBox(height: 4),
-            AnimatedOpacity(
-              opacity: isActive ? 1 : 0,
+
+            // LABEL (no height jump)
+            AnimatedSize(
               duration: const Duration(milliseconds: 200),
-              child: Text(
-                label,
-                style: const TextStyle(
-                  fontSize: 11,
-                  fontWeight: FontWeight.w600,
-                  color: Color(0xFF0E5FD8),
-                ),
-              ),
+              curve: Curves.easeOut,
+              child: isActive
+                  ? Padding(
+                      padding: const EdgeInsets.only(top: 2),
+                      child: Text(
+                        label,
+                        style: const TextStyle(
+                          fontSize: 11, // ⬅ smaller text
+                          fontWeight: FontWeight.w600,
+                          color: Color(0xFF0E5FD8),
+                        ),
+                      ),
+                    )
+                  : const SizedBox.shrink(),
             ),
           ],
         ),
@@ -752,8 +803,8 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                 children: [
                   // 🔷 LOGO CONTAINER
                   Container(
-                    height: 60,
-                    width: 60,
+                    height: 50,
+                    width: 50,
 
                     child: Padding(
                       padding: const EdgeInsets.all(1),

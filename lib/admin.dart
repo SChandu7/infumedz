@@ -1435,15 +1435,31 @@ class _DashboardMetric extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            CircleAvatar(
-              backgroundColor: color.withOpacity(0.15),
-              child: Icon(icon, color: color),
+            Column(
+              children: [
+                Row(
+                  children: [
+                    CircleAvatar(
+                      backgroundColor: color.withOpacity(0.15),
+                      child: Icon(icon, color: color),
+                    ),
+                    const SizedBox(width: 15),
+
+                    Center(
+                      child: Text(
+                        value,
+                        style: const TextStyle(
+                          fontSize: 22,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
             ),
             const SizedBox(height: 12),
-            Text(
-              value,
-              style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
-            ),
+
             Text(title, style: const TextStyle(color: Colors.grey)),
           ],
         ),
@@ -2442,13 +2458,18 @@ class _AdminBannerScreenState extends State<AdminBannerScreen> {
             },
             style: ElevatedButton.styleFrom(
               padding: const EdgeInsets.symmetric(vertical: 14),
+              backgroundColor: Colors.blue[300],
 
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(8),
               ),
             ),
-            child: const Text("Save Changes"),
+            child: const Text(
+              "Save Changes",
+              style: TextStyle(color: Colors.black),
+            ),
           ),
+          const SizedBox(height: 20),
         ],
       ),
     );
@@ -2466,7 +2487,7 @@ class _AdminDeleteDialogState extends State<AdminDeleteDialog> {
   String? selectedCourseId;
   String? selectedBookId;
 
-  String deleteType = "course"; // or "book"
+  String deleteType = "course"; // "course" | "book"
 
   List<Map<String, dynamic>> courses = [];
   List<Map<String, dynamic>> books = [];
@@ -2477,6 +2498,36 @@ class _AdminDeleteDialogState extends State<AdminDeleteDialog> {
   void initState() {
     super.initState();
     loadData();
+  }
+
+  Future<void> deleteItem({required String type, required String id}) async {
+    final url = type == "course"
+        ? "https://api.chandus7.in/api/infumedz/course/$id/"
+        : "https://api.chandus7.in/api/infumedz/book/$id/";
+
+    try {
+      final res = await http.delete(Uri.parse(url));
+
+      if (res.statusCode == 200) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("${type.toUpperCase()} deleted successfully")),
+        );
+
+        Navigator.pop(context, true); // notify parent to refresh
+      } else {
+        print(res.body);
+        final body = jsonDecode(res.body);
+        print(body["error"]);
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(body["error"] ?? "Delete failed")),
+        );
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text("Error: $e")));
+    }
   }
 
   Future<void> loadData() async {
@@ -2495,25 +2546,6 @@ class _AdminDeleteDialogState extends State<AdminDeleteDialog> {
     });
   }
 
-  Future<void> deleteItem({required String type, required String id}) async {
-    final url = type == "course"
-        ? "https://api.chandus7.in/api/infumedz/admin/course/$id/"
-        : "https://api.chandus7.in/api/infumedz/admin/book/$id/";
-
-    final res = await http.delete(Uri.parse(url));
-
-    if (res.statusCode == 200) {
-      Navigator.pop(context);
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text("$type deleted successfully")));
-    } else {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text("Failed to delete $type")));
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
@@ -2526,44 +2558,77 @@ class _AdminDeleteDialogState extends State<AdminDeleteDialog> {
           : Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                /// COURSE DROPDOWN
-                DropdownButton<String>(
-                  value: selectedCourseId,
-                  hint: const Text("Select Course"),
-                  items: courses.map<DropdownMenuItem<String>>((course) {
-                    return DropdownMenuItem<String>(
-                      value: course["course_id"].toString(),
-                      child: Text(course["title"].toString()),
-                    );
-                  }).toList(),
-                  onChanged: (value) {
+                /// TYPE SWITCH
+                ToggleButtons(
+                  isSelected: [deleteType == "course", deleteType == "book"],
+                  onPressed: (index) {
                     setState(() {
-                      selectedCourseId = value;
+                      deleteType = index == 0 ? "course" : "book";
+                      selectedCourseId = null;
+                      selectedBookId = null;
                     });
                   },
+                  children: const [
+                    Padding(
+                      padding: EdgeInsets.symmetric(horizontal: 16),
+                      child: Text("Course"),
+                    ),
+                    Padding(
+                      padding: EdgeInsets.symmetric(horizontal: 16),
+                      child: Text("Book"),
+                    ),
+                  ],
                 ),
 
-                const SizedBox(height: 12),
+                const SizedBox(height: 16),
+
+                /// COURSE DROPDOWN
+                if (deleteType == "course")
+                  DropdownButton<String>(
+                    value:
+                        courses.any(
+                          (c) => c["id"].toString() == selectedCourseId,
+                        )
+                        ? selectedCourseId
+                        : null, // ✅ SAFE
+                    hint: const Text("Select Course"),
+                    isExpanded: true,
+                    items: courses.map((course) {
+                      return DropdownMenuItem<String>(
+                        value: course["id"].toString(),
+                        child: Text(course["title"]),
+                      );
+                    }).toList(),
+                    onChanged: (value) {
+                      setState(() {
+                        selectedCourseId = value;
+                      });
+                    },
+                  ),
 
                 /// BOOK DROPDOWN
-                DropdownButton<String>(
-                  value: selectedBookId,
-                  hint: const Text("Select Book"),
-                  items: books.map<DropdownMenuItem<String>>((book) {
-                    return DropdownMenuItem<String>(
-                      value: book["book_id"].toString(),
-                      child: Text(book["title"].toString()),
-                    );
-                  }).toList(),
-                  onChanged: (value) {
-                    setState(() {
-                      selectedBookId = value;
-                    });
-                  },
-                ),
+                if (deleteType == "book")
+                  DropdownButton<String>(
+                    value:
+                        books.any((b) => b["id"].toString() == selectedBookId)
+                        ? selectedBookId
+                        : null, // ✅ SAFE
+                    hint: const Text("Select Book"),
+                    isExpanded: true,
+                    items: books.map((book) {
+                      return DropdownMenuItem<String>(
+                        value: book["id"].toString(),
+                        child: Text(book["title"]),
+                      );
+                    }).toList(),
+                    onChanged: (value) {
+                      setState(() {
+                        selectedBookId = value;
+                      });
+                    },
+                  ),
               ],
             ),
-
       actions: [
         TextButton(
           onPressed: () => Navigator.pop(context),
@@ -2571,13 +2636,50 @@ class _AdminDeleteDialogState extends State<AdminDeleteDialog> {
         ),
         ElevatedButton(
           style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-          onPressed: () {
-            if (selectedCourseId != null) {
-              deleteItem(type: "course", id: selectedCourseId!);
-            } else if (selectedBookId != null) {
-              deleteItem(type: "book", id: selectedBookId!);
-            }
-          },
+
+          // 🔒 DISABLE BUTTON WHEN NOTHING IS SELECTED
+          onPressed:
+              (deleteType == "course" && selectedCourseId == null) ||
+                  (deleteType == "book" && selectedBookId == null)
+              ? null
+              : () async {
+                  // ⚠️ CONFIRMATION DIALOG
+                  final confirm = await showDialog<bool>(
+                    context: context,
+                    builder: (context) => AlertDialog(
+                      title: const Text("Confirm Delete"),
+                      content: Text(
+                        deleteType == "course"
+                            ? "Are you sure you want to deactivate this course?"
+                            : "Are you sure you want to deactivate this book?",
+                      ),
+                      actions: [
+                        TextButton(
+                          onPressed: () => Navigator.pop(context, false),
+                          child: const Text("Cancel"),
+                        ),
+                        ElevatedButton(
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.red,
+                          ),
+                          onPressed: () => Navigator.pop(context, true),
+                          child: const Text("Yes, Delete"),
+                        ),
+                      ],
+                    ),
+                  );
+
+                  // ❌ USER CANCELLED
+                  if (confirm != true) return;
+
+                  // ✅ PERFORM DELETE
+                  if (deleteType == "course") {
+                    await deleteItem(type: "course", id: selectedCourseId!);
+                  } else {
+                    await deleteItem(type: "book", id: selectedBookId!);
+                  }
+                },
+
           child: const Text("Delete"),
         ),
       ],
