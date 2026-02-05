@@ -7,10 +7,12 @@ import 'package:flutter_file_dialog/flutter_file_dialog.dart';
 import 'package:flutter/services.dart';
 import 'dart:async';
 import 'package:infumedz/views.dart';
+import 'package:razorpay_flutter/razorpay_flutter.dart';
 import 'package:video_player/video_player.dart';
 import 'admin.dart';
 import 'cart.dart';
 import 'main.dart';
+import 'payment.dart';
 
 class MedicalStoreScreen extends StatefulWidget {
   final String initialCategory; // 👈 NEW
@@ -165,35 +167,6 @@ class _MedicalStoreScreenState extends State<MedicalStoreScreen> {
     );
   }
 
-  void _openCart(BuildContext context) {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      isDismissible: false,
-      backgroundColor: Colors.transparent,
-      builder: (_) => CartBottomSheet(
-        initialItems: CartStore.items,
-        onCartUpdated: (updated) {
-          setState(() {
-            CartStore.clear();
-            for (final item in updated) {
-              final safeItem = {
-                "id": item["id"] ?? "",
-                "title": item["title"] ?? "Untitled",
-                "image":
-                    item["image"] ??
-                    item["thumbnail_url"] ??
-                    "assets/images/placeholder.png",
-                "price": item["price"]?.toString() ?? "0",
-              };
-              CartStore.add(safeItem);
-            }
-          });
-        },
-      ),
-    );
-  }
-
   void _openWishlist() {
     showModalBottomSheet(
       context: context,
@@ -212,7 +185,7 @@ class _MedicalStoreScreenState extends State<MedicalStoreScreen> {
                 "assets/images/placeholder.png",
             "price": item["price"]?.toString() ?? "0",
           };
-          CartStore.add(safeItem);
+          CartStore.addCourse(safeItem);
         },
         onWishlistUpdated: (updated) {
           setState(() {
@@ -263,7 +236,20 @@ class _MedicalStoreScreenState extends State<MedicalStoreScreen> {
                   Icons.shopping_cart_outlined,
                   color: Color(0xFF0E5FD8),
                 ),
-                onPressed: () => _openCart(context),
+                onPressed: () {
+                  showModalBottomSheet(
+                    context: context,
+                    isScrollControlled: true,
+                    isDismissible: false,
+                    backgroundColor: Colors.transparent,
+                    builder: (_) => CartBottomSheet(
+                      initialItems: CartStore.items, // ✅ IMPORTANT
+                      onCartUpdated: (updated) {
+                        // optional sync if needed later
+                      },
+                    ),
+                  );
+                },
               ),
 
               if (CartStore.items.isNotEmpty)
@@ -423,26 +409,7 @@ class _MedicalStoreScreenState extends State<MedicalStoreScreen> {
                     });
                   },
 
-                  onAddToCart: () {
-                    setState(() {
-                      if (!CartStore.items.contains(item)) {
-                        final safeItem = {
-                          "id": item["id"] ?? "",
-                          "title": item["title"] ?? "Untitled",
-                          "image":
-                              item["image"] ??
-                              item["thumbnail_url"] ??
-                              "assets/images/placeholder.png",
-                          "price": item["price"]?.toString() ?? "0",
-                        };
-                        CartStore.add(safeItem);
-                      }
-                    });
-
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text("Added to cart")),
-                    );
-                  },
+                  onAddToCart: () {},
                 );
               },
             ),
@@ -672,49 +639,6 @@ class _CourseListCard extends StatelessWidget {
   }
 }
 
-class CartStore {
-  static final List<Map<String, dynamic>> _items = [];
-
-  static List<Map<String, dynamic>> get items => List.unmodifiable(_items);
-
-  /// returns true if added, false if already exists
-  static bool add(Map<String, dynamic> item) {
-    final exists = _items.any((e) => e["title"] == item["title"]);
-
-    if (exists) return false;
-
-    _items.add(item);
-    return true;
-  }
-
-  static void remove(Map<String, dynamic> item) {
-    _items.removeWhere((e) => e["title"] == item["title"]);
-  }
-
-  static void clear() {
-    _items.clear();
-  }
-
-  static bool contains(Map<String, dynamic> item) {
-    return _items.any((e) => e["title"] == item["title"]);
-  }
-
-  static double total() {
-    double sum = 0;
-
-    for (final item in _items) {
-      final raw = item["price"];
-      if (raw == null) continue;
-
-      final cleaned = raw.toString().replaceAll("₹", "").replaceAll(",", "");
-
-      sum += double.tryParse(cleaned) ?? 0;
-    }
-
-    return sum;
-  }
-}
-
 // ignore: must_be_immutable
 class CourseDetailScreen extends StatefulWidget {
   final Map<String, dynamic> data;
@@ -751,6 +675,12 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
 
   @override
   void initState() {
+    _razorpay = Razorpay();
+
+    _razorpay.on(Razorpay.EVENT_PAYMENT_SUCCESS, _onSuccess);
+    _razorpay.on(Razorpay.EVENT_PAYMENT_ERROR, _onError);
+    print(widget.data);
+    print(("00000000000000000000000000000000000000000000000000000000000"));
     print(widget.data["videos"]);
     // TODO: implement initState
     if (widget.option == "Books") {
@@ -764,6 +694,116 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
     }
 
     super.initState();
+  }
+
+  late Razorpay _razorpay;
+
+  String? _orderId;
+  bool _loading = false;
+  String _status = "Ready";
+
+  @override
+  void dispose() {
+    _razorpay.clear();
+    super.dispose();
+  }
+
+  // =====================================================
+  // STEP 1: CREATE ORDER
+  // =====================================================
+  Future<void> startPayment() async {
+    setState(() {
+      _loading = true;
+      _status = "Creating order…";
+    });
+
+    try {
+      final res = await http.post(
+        Uri.parse("https://api.chandus7.in/api/infumedz/payment/create-order/"),
+        headers: {"Content-Type": "application/json"},
+        body: jsonEncode({
+          "user": "2",
+          "course_id": widget.data["id"],
+        }), // ₹5 (recommended)
+      );
+
+      if (res.statusCode != 200) {
+        throw "Order creation failed";
+      }
+
+      final data = jsonDecode(res.body);
+      _orderId = data["order_id"];
+
+      _openRazorpay(data["key"]);
+    } catch (e) {
+      setState(() {
+        _loading = false;
+        _status = "Failed to start payment";
+      });
+    }
+  }
+
+  // =====================================================
+  // STEP 2: OPEN RAZORPAY
+  // =====================================================
+  void _openRazorpay(String key) {
+    _status = "Opening payment gateway…";
+
+    _razorpay.open({
+      'key': key,
+      'order_id': _orderId,
+      'amount': 200,
+      'currency': 'INR',
+      'name': 'Chandus7 Payment',
+      'description': 'UPI / Card Payment',
+      'timeout': 180,
+      'retry': {'enabled': false},
+      'prefill': {'contact': '9949597079', 'email': 'kingchandus143@gmail.com'},
+    });
+  }
+
+  // =====================================================
+  // STEP 3: SDK SUCCESS CALLBACK (NOT FINAL TRUTH)
+  // =====================================================
+  Future<void> _onSuccess(PaymentSuccessResponse response) async {
+    setState(() {
+      _status = "Verifying payment…";
+    });
+
+    // ⚠️ ONLY NOW we talk to backend
+    final res = await http.post(
+      Uri.parse("https://api.chandus7.in/api/infumedz/payment/verify-payment/"),
+      headers: {"Content-Type": "application/json"},
+      body: jsonEncode({
+        "order_id": _orderId,
+        "payment_id": response.paymentId,
+        "signature": response.signature,
+      }),
+    );
+
+    if (res.statusCode == 200) {
+      setState(() {
+        _status = "✅ Payment Successful";
+        _loading = false;
+      });
+    } else {
+      // Signature failed or backend rejected
+      setState(() {
+        _status = "⚠️ Payment processing. Please refresh.";
+        _loading = false;
+      });
+    }
+  }
+
+  // =====================================================
+  // STEP 4: SDK ERROR / BANKING BUG / UPI ISSUE
+  // =====================================================
+  void _onError(PaymentFailureResponse response) {
+    // ❌ DO NOT mark failed immediately
+    setState(() {
+      _status = "⚠️ Payment not completed / cancelled";
+      _loading = false;
+    });
   }
 
   @override
@@ -806,7 +846,7 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
             Expanded(
               child: ElevatedButton(
                 onPressed: () {
-                  CartStore.add(widget.data);
+                  startPayment();
 
                   ScaffoldMessenger.of(context).showSnackBar(
                     const SnackBar(content: Text("Added to cart")),

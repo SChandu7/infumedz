@@ -2,6 +2,21 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'dart:async';
 
+class CartStore {
+  static final List<Map<String, dynamic>> _items = [];
+
+  static void addCourse(Map<String, dynamic> course) {
+    _items.add({
+      "course_id": course["id"],
+      "title": course["title"] ?? "Untitled",
+      "thumbnail":
+          course["thumbnail_url"] ?? course["image"] ?? "", // safe fallback
+    });
+  }
+
+  static List<Map<String, dynamic>> get items => List.unmodifiable(_items);
+}
+
 class CartPage extends StatelessWidget {
   const CartPage({super.key});
   @override
@@ -40,7 +55,7 @@ class _CartBottomSheetState extends State<CartBottomSheet> {
 
       final cleaned = raw.toString().replaceAll("₹", "").replaceAll(",", "");
 
-      return sum + (double.tryParse(cleaned) ?? 0);
+      return sum + (double.tryParse(cleaned)!);
     });
   }
 
@@ -139,7 +154,9 @@ class _CartItemTile extends StatelessWidget {
   final Map<String, dynamic> item;
   final VoidCallback? onDelete;
 
-  const _CartItemTile({required this.item, this.onDelete});
+  _CartItemTile({required this.item, this.onDelete});
+  String get title => item["title"]?.toString() ?? "Untitled";
+  String get thumbnail => item["thumbnail"]?.toString() ?? "";
 
   @override
   Widget build(BuildContext context) {
@@ -151,50 +168,61 @@ class _CartItemTile extends StatelessWidget {
         borderRadius: BorderRadius.circular(14),
         border: Border.all(color: const Color(0xFFE2E8F0)),
       ),
-      child: Row(
-        children: [
-          ClipRRect(
-            borderRadius: BorderRadius.circular(8),
-            child: Image.asset(
-              item["image"] as String,
-              width: 60,
-              height: 50,
-              fit: BoxFit.cover,
-            ),
-          ),
-
-          const SizedBox(width: 12),
-
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  item["title"],
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    fontWeight: FontWeight.w600,
-                    fontSize: 14,
-                  ),
+      child: InkWell(
+        onTap: () {
+          print(item);
+          print("========================================================");
+        },
+        child: Row(
+          children: [
+            ClipRRect(
+              borderRadius: BorderRadius.circular(8),
+              child: Image.network(
+                thumbnail,
+                width: 60,
+                height: 50,
+                fit: BoxFit.cover,
+                errorBuilder: (_, __, ___) => Container(
+                  width: 60,
+                  height: 50,
+                  color: Colors.grey.shade300,
                 ),
-                const SizedBox(height: 4),
-                Text(
-                  item["price"] as String,
-                  style: const TextStyle(
-                    fontWeight: FontWeight.bold,
-                    color: Color(0xFF0E5FD8),
-                  ),
-                ),
-              ],
+              ),
             ),
-          ),
 
-          IconButton(
-            icon: const Icon(Icons.delete_outline, color: Colors.red),
-            onPressed: onDelete,
-          ),
-        ],
+            const SizedBox(width: 12),
+
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w600,
+                      fontSize: 14,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    item["price"],
+                    style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      color: Color(0xFF0E5FD8),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
+            IconButton(
+              icon: const Icon(Icons.delete_outline, color: Colors.red),
+              onPressed: onDelete,
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -445,11 +473,13 @@ class _WishlistItemTile extends StatelessWidget {
           /// IMAGE
           ClipRRect(
             borderRadius: BorderRadius.circular(10),
-            child: Image.asset(
-              item["image"] as String,
-              width: 64,
-              height: 56,
+            child: Image.network(
+              item["thumbnail"] ?? "",
+              width: 90,
+              height: 70,
               fit: BoxFit.cover,
+              errorBuilder: (_, __, ___) =>
+                  Container(color: Colors.grey.shade300),
             ),
           ),
 
@@ -537,5 +567,3 @@ class _EmptyWishlistView extends StatelessWidget {
     );
   }
 }
-
-
