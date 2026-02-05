@@ -574,7 +574,7 @@ class _SignUpPageState extends State<SignUpPage> {
                       _buildInputField(
                         controller: _emailController,
                         hintText: "Email ",
-                        icon: Icons.phone,
+                        icon: Icons.mail,
                         inputType: TextInputType.phone,
                       ),
 
@@ -714,6 +714,16 @@ class UserSession {
   static Future<String?> getUserId() async {
     final prefs = await SharedPreferences.getInstance();
     return prefs.getString(_keyUserId);
+  }
+
+  static Future<String?> getUseremail() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString(_keyUseremail);
+  }
+
+  static Future<String?> getUserphonenumber() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString(_keyUserphonenumber);
   }
 
   static Future<void> logout() async {

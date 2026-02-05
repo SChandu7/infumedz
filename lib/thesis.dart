@@ -2,6 +2,112 @@ import 'package:flutter/material.dart';
 import 'package:animate_do/animate_do.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+Widget _guarantee() {
+  return Padding(
+    padding: const EdgeInsets.symmetric(horizontal: 16),
+    child: Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        border: Border.all(color: Colors.green.shade300),
+        borderRadius: BorderRadius.circular(14),
+      ),
+      child: Row(
+        children: const [
+          Icon(Icons.verified_user, color: Colors.green, size: 28),
+          SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              "100% Confidentiality • Ethical Academic Practices • Plagiarism-Safe • Human-Verified Content",
+              style: TextStyle(fontSize: 13.5, fontWeight: FontWeight.w600),
+            ),
+          ),
+        ],
+      ),
+    ),
+  );
+}
+
+Widget _outcomes() {
+  return Padding(
+    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
+    child: Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: const Color(0xFFEFF4FF),
+        borderRadius: BorderRadius.circular(14),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: const [
+          Text(
+            "Real Outcomes",
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.w700,
+              color: Color(0xFF1F3C68),
+            ),
+          ),
+          SizedBox(height: 10),
+          Text("• Theses accepted in top Indian universities"),
+          Text("• Publications in indexed journals"),
+          Text("• Successful conference presentations"),
+          Text("• Faculty promotion documentation support"),
+        ],
+      ),
+    ),
+  );
+}
+
+class _Bullet extends StatelessWidget {
+  final String text;
+  const _Bullet(this.text);
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Row(
+        children: [
+          const Icon(Icons.check_circle, size: 18, color: Color(0xFF0E5FD8)),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              text,
+              style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _MiniStep extends StatelessWidget {
+  final String text;
+  const _MiniStep(this.text);
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Row(
+        children: [
+          const Icon(
+            Icons.check_circle_outline,
+            color: Color(0xFF0E5FD8),
+            size: 18,
+          ),
+          const SizedBox(width: 8),
+          Text(
+            text,
+            style: const TextStyle(fontSize: 14.5, fontWeight: FontWeight.w600),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class ThesisAssistanceScreen extends StatelessWidget {
   const ThesisAssistanceScreen({super.key});
 
@@ -10,7 +116,7 @@ class ThesisAssistanceScreen extends StatelessWidget {
     return Scaffold(
       backgroundColor: const Color(0xFFF6F8FC),
       appBar: AppBar(
-        title: const Text("InfuMedz"),
+        title: const Text("InfuMedz Services "),
         backgroundColor: const Color.fromARGB(255, 255, 255, 255),
       ),
       body: SingleChildScrollView(
@@ -51,7 +157,6 @@ class ThesisAssistanceScreen extends StatelessWidget {
                 ],
               ),
             ),
-
             const SizedBox(height: 20),
 
             /// 🔹 SERVICES
@@ -115,9 +220,7 @@ class ThesisAssistanceScreen extends StatelessWidget {
               ),
             ),
 
-            const SizedBox(height: 30),
-
-            /// 🔹 PROCESS FLOW
+            const SizedBox(height: 20),
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16),
               child: Column(
@@ -127,22 +230,26 @@ class ThesisAssistanceScreen extends StatelessWidget {
                     "How We Work",
                     style: TextStyle(
                       fontSize: 20,
-                      fontWeight: FontWeight.w700,
+                      fontWeight: FontWeight.w800,
                       color: Color(0xFF1F3C68),
                     ),
                   ),
-                  SizedBox(height: 16),
+                  SizedBox(height: 14),
+                  _MiniStep("1. Requirement Review"),
+                  _MiniStep("2. Expert Allocation"),
+                  _MiniStep("3. Draft Development"),
+                  _MiniStep("4. Quality & Ethics Check"),
+                  _MiniStep("5. Final Delivery & Support"),
                 ],
               ),
             ),
 
-            _processStep("Requirement Discussion"),
-            _processStep("Expert Assignment"),
-            _processStep("Draft Preparation"),
-            _processStep("Revisions & Quality Check"),
-            _processStep("Final Delivery & Support"),
-
-            const SizedBox(height: 32),
+            /// 🔹 PROCESS FLOW
+            const SizedBox(height: 1),
+            _outcomes(),
+            const SizedBox(height: 10),
+            _guarantee(),
+            const SizedBox(height: 1),
 
             /// 🔹 CONTACT FORM
             Padding(

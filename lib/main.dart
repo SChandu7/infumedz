@@ -5,6 +5,8 @@ import 'package:http/http.dart' as http;
 import 'package:image_picker/image_picker.dart';
 import 'package:flutter_file_dialog/flutter_file_dialog.dart';
 import 'package:flutter/services.dart';
+import 'package:infumedz/loginsignup.dart';
+import 'package:infumedz/user.dart';
 import 'dart:async';
 import 'package:infumedz/views.dart';
 import 'package:video_player/video_player.dart';
@@ -62,29 +64,62 @@ class MainShell extends StatefulWidget {
 
 class _MainShellState extends State<MainShell> {
   int index = 0;
+  DateTime? _lastBackPressed;
 
-  final screens = const [
-    HomePage(),
-    MedicalStoreScreen(),
-    LibraryPage(),
-    AdminHomeScreen(),
+  final screens = [
+    const HomePage(),
+    const MedicalStoreScreen(),
+    const LibraryPage(),
+    (UserSession.getUserphonenumber() == "9949597079" ||
+            UserSession.getUserphonenumber() == "9167459138" ||
+            UserSession.getUserphonenumber() == "0000000000")
+        ? AdminHomeScreen()
+        : UserHomeScreen(),
   ];
+
+  Future<bool> _onBackPressed() async {
+    final now = DateTime.now();
+
+    if (_lastBackPressed == null ||
+        now.difference(_lastBackPressed!) > const Duration(seconds: 2)) {
+      _lastBackPressed = now;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text("Press back again to exit"),
+          duration: Duration(seconds: 2),
+        ),
+      );
+      return false; // ❌ don’t exit yet
+    }
+    return true; // ✅ exit app
+  }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      extendBody: true,
+    return WillPopScope(
+      onWillPop: _onBackPressed,
+      child: Scaffold(
+        extendBody: true,
 
-      body: screens[index],
+        body: screens[index],
 
-      // ✅ FAB ONLY FOR ADMIN TAB
-      floatingActionButton: index == 3 ? AdminExpandableFab() : null,
+        // ✅ FAB ONLY FOR ADMIN TAB
+        floatingActionButton: index == 3
+            ? (UserSession.getUserphonenumber() == "9949597079" ||
+                      UserSession.getUserphonenumber() == "9167459138" ||
+                      UserSession.getUseremail() ==
+                          "chandrasekharsuragani532@gmail.com")
+                  ? AdminExpandableFab()
+                  : null
+            : null,
 
-      floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
+        floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
 
-      bottomNavigationBar: AnimatedBottomNav(
-        currentIndex: index,
-        onTap: (i) => setState(() => index = i),
+        bottomNavigationBar: AnimatedBottomNav(
+          currentIndex: index,
+          onTap: (i) => setState(() => index = i),
+        ),
       ),
     );
   }
@@ -241,11 +276,11 @@ class AnimatedBottomNav extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      margin: const EdgeInsets.fromLTRB(16, 2, 16, 12),
+      margin: const EdgeInsets.fromLTRB(22, 2, 22, 12),
       padding: const EdgeInsets.symmetric(vertical: 10),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(24),
+        borderRadius: BorderRadius.circular(10),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withOpacity(0.12),
@@ -318,7 +353,7 @@ class _NavItem extends StatelessWidget {
         curve: Curves.easeOut,
         padding: EdgeInsets.symmetric(
           horizontal: isActive ? 14 : 10,
-          vertical: 3, // ⬅ reduced
+          vertical: 2.5, // ⬅ reduced
         ),
         decoration: BoxDecoration(
           color: isActive
@@ -382,11 +417,23 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
   String aboutText = "";
   List<String> bannerImages = [];
   bool bannerLoading = true;
+  final TextEditingController _searchController = TextEditingController();
+  final FocusNode _searchFocus = FocusNode();
+  Timer? _debounce;
 
-  bool loadingHome = true;
-
+  List<Map<String, dynamic>> searchResults = [];
   List<Map<String, dynamic>> allCourses = [];
   List<Map<String, dynamic>> allBooks = [];
+
+  // 🔍 search-only data
+  List<String> allTitles = [];
+  List<String> filteredTitles = [];
+
+  bool showSearchDropdown = false;
+
+  bool isSearching = false;
+
+  bool loadingHome = true;
 
   List<Map<String, dynamic>> popularCourses = [];
   List<Map<String, dynamic>> popularBooks = [];
@@ -481,6 +528,16 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
           .toList();
 
       setState(() {
+        allCourses = courses;
+        allBooks = books;
+
+        // 🔥 BUILD SEARCH TITLE LIST
+        allTitles = [
+          ...courses.map((c) => c["title"].toString()),
+          ...books.map((b) => b["title"].toString()),
+        ];
+
+        loadingHome = false;
         aboutText = banner["about_text"] ?? "";
         bannerImages = List<String>.from(banner["carousel_urls"] ?? []);
 
@@ -498,6 +555,45 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
       loadingHome = false;
       debugPrint("Home load error: $e");
     }
+  }
+
+  void _onSearchItemTap(String title) {
+    Map<String, dynamic>? item;
+    String option = "Courses";
+
+    // 🔍 FIND IN COURSES
+    try {
+      item = allCourses.firstWhere((c) => c["title"] == title);
+      option = "Courses";
+    } catch (_) {}
+
+    // 🔍 IF NOT FOUND, FIND IN BOOKS
+    if (item == null) {
+      try {
+        item = allBooks.firstWhere((b) => b["title"] == title);
+        option = "Books";
+      } catch (_) {}
+    }
+
+    if (item == null) return;
+
+    _searchController.clear();
+    _searchFocus.unfocus();
+
+    setState(() {
+      showSearchDropdown = false;
+    });
+
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => CourseDetailScreen(
+          data: item!, // ✅ FULL OBJECT
+          option: option,
+          isLocked: false,
+        ),
+      ),
+    );
   }
 
   void _showNotificationPanel() {
@@ -659,6 +755,28 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     );
   }
 
+  void _onSearchChanged(String query) {
+    final q = query.trim().toLowerCase();
+
+    if (q.isEmpty) {
+      setState(() {
+        filteredTitles = allTitles.take(6).toList();
+        showSearchDropdown = true;
+      });
+      return;
+    }
+
+    final results = allTitles
+        .where((title) => title.toLowerCase().contains(q))
+        .take(6)
+        .toList();
+
+    setState(() {
+      filteredTitles = results;
+      showSearchDropdown = true;
+    });
+  }
+
   Future<void> fetchBannerData() async {
     try {
       final res = await http.get(
@@ -790,710 +908,685 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
   @override
   Widget build(BuildContext context) {
     return SafeArea(
-      child: ListView(
-        padding: const EdgeInsets.all(10),
-        children: [
-          /// Header
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              // LEFT: LOGO + BRAND TEXT
-              Row(
-                children: [
-                  // 🔷 LOGO CONTAINER
-                  Container(
-                    height: 50,
-                    width: 50,
+      child: GestureDetector(
+        behavior: HitTestBehavior.translucent,
+        onTap: () {
+          _searchFocus.unfocus();
+          setState(() => showSearchDropdown = false);
+        },
+        child: ListView(
+          padding: const EdgeInsets.all(10),
+          children: [
+            /// Header
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                // LEFT: LOGO + BRAND TEXT
+                Row(
+                  children: [
+                    // 🔷 LOGO CONTAINER
+                    GestureDetector(
+                      onTap: () => LoginPage(),
+                      child: Container(
+                        height: 50,
+                        width: 50,
 
-                    child: Padding(
-                      padding: const EdgeInsets.all(1),
-                      child: Image.asset(
-                        "assets/logo.png", // 👈 your logo
-                        fit: BoxFit.contain,
+                        child: Padding(
+                          padding: const EdgeInsets.all(1),
+                          child: Image.asset(
+                            "assets/logo.png", // 👈 your logo
+                            fit: BoxFit.contain,
+                          ),
+                        ),
+                      ),
+                    ),
+
+                    // 🧠 BRAND TEXT
+                  ],
+                ),
+
+                Center(
+                  child: Text(
+                    "InfuMedz",
+                    style: TextStyle(
+                      fontSize: 26,
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: 0.4,
+                      color: Color(0xFF1F3C68),
+                    ),
+                  ),
+                ),
+
+                // RIGHT: NOTIFICATION / PROFILE
+                InkWell(
+                  onTap: _showNotificationPanel,
+                  child: Container(
+                    padding: const EdgeInsets.all(2),
+                    decoration: const BoxDecoration(
+                      shape: BoxShape.circle,
+                      gradient: LinearGradient(
+                        colors: [Color(0xFF4F46E5), Color(0xFF06B6D4)],
+                      ),
+                    ),
+                    child: const CircleAvatar(
+                      radius: 20,
+                      backgroundColor: Colors.white,
+                      child: Icon(
+                        Icons.notifications_none_rounded,
+                        color: Colors.black87,
                       ),
                     ),
                   ),
+                ),
+              ],
+            ),
 
-                  // 🧠 BRAND TEXT
-                ],
-              ),
-
-              Center(
-                child: Column(
-                  //crossAxisAlignment: CrossAxisAlignment.start,
-                  children: const [
-                    Text(
-                      "InfuMedz",
-                      style: TextStyle(
-                        fontSize: 26,
-                        fontWeight: FontWeight.w800,
-                        letterSpacing: 0.4,
-                        color: Color(0xFF1F3C68),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(0, 14, 0, 0),
+              child: Container(
+                height: 47,
+                padding: const EdgeInsets.symmetric(horizontal: 14),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(6),
+                  border: Border.all(color: const Color(0xFFE2E8F0)),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(Icons.search, color: Color(0xFF0E5FD8)),
+                    const SizedBox(width: 10),
+                    const Expanded(
+                      child: TextField(
+                        decoration: InputDecoration(
+                          hintText: "Search courses, books.",
+                          border: InputBorder.none,
+                        ),
                       ),
                     ),
-                    // SizedBox(height: 2),
-                    // Text(
-                    //   "Medical Learning Platform",
-                    //   style: TextStyle(
-                    //     fontSize: 12,
-                    //     color: Colors.black54,
-                    //     fontWeight: FontWeight.w500,
-                    //   ),
-                    // ),
+                    IconButton(
+                      icon: const Icon(Icons.tune, color: Color(0xFF0E5FD8)),
+                      onPressed: () {
+                        setState(() {
+                          UserSession.logout();
+                        });
+                      },
+                    ),
                   ],
                 ),
               ),
+            ),
+            const SizedBox(height: 4),
+            _buildMarquee(),
+            const SizedBox(height: 8),
 
-              // RIGHT: NOTIFICATION / PROFILE
-              InkWell(
-                onTap: _showNotificationPanel,
-                child: Container(
-                  padding: const EdgeInsets.all(2),
-                  decoration: const BoxDecoration(
-                    shape: BoxShape.circle,
-                    gradient: LinearGradient(
-                      colors: [Color(0xFF4F46E5), Color(0xFF06B6D4)],
+            /// Hero Banner
+            // ------------------ CAROUSEL ------------------
+            SizedBox(
+              height: 200,
+              child: PageView.builder(
+                controller: _controller,
+                itemCount: bannerImages.length,
+                onPageChanged: (i) {
+                  setState(() => _currentIndex = i);
+                },
+                itemBuilder: (context, index) {
+                  return AnimatedPadding(
+                    duration: const Duration(milliseconds: 400),
+                    padding: EdgeInsets.symmetric(
+                      horizontal: index == _currentIndex ? 4 : 4,
                     ),
-                  ),
-                  child: const CircleAvatar(
-                    radius: 20,
-                    backgroundColor: Colors.white,
-                    child: Icon(
-                      Icons.notifications_none_rounded,
-                      color: Colors.black87,
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(10),
+                      child: Stack(
+                        fit: StackFit.expand,
+                        children: [
+                          // 🖼 IMAGE
+                          bannerImages.isEmpty
+                              ? const SizedBox()
+                              : ClipRRect(
+                                  borderRadius: BorderRadius.circular(10),
+                                  child: Image.network(
+                                    bannerImages[index],
+                                    fit: BoxFit.cover,
+                                    errorBuilder: (_, __, ___) =>
+                                        Container(color: Colors.grey.shade300),
+                                  ),
+                                ),
+
+                          // 🌫 DARK GRADIENT OVERLAY
+                          // Container(
+                          //   decoration: const BoxDecoration(
+                          //     gradient: LinearGradient(
+                          //       begin: Alignment.bottomCenter,
+                          //       end: Alignment.topCenter,
+                          //       colors: [Colors.black54, Colors.transparent],
+                          //     ),
+                          //   ),
+                          // ),
+
+                          // 🧠 TEXT
+                        ],
+                      ),
                     ),
+                  );
+                },
+              ),
+            ),
+
+            const SizedBox(height: 5),
+
+            // 🔘 INDICATORS
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: List.generate(
+                bannerImages.length,
+                (i) => AnimatedContainer(
+                  duration: const Duration(milliseconds: 300),
+                  margin: const EdgeInsets.symmetric(horizontal: 4),
+                  width: _currentIndex == i ? 18 : 8,
+                  height: 8,
+                  decoration: BoxDecoration(
+                    color: _currentIndex == i
+                        ? const Color(0xFF4F46E5) // brand indigo
+                        : Colors.grey.shade400,
+                    borderRadius: BorderRadius.circular(10),
                   ),
                 ),
               ),
-            ],
-          ),
-
-          const SizedBox(height: 10),
-          SizedBox(
-            height: 50,
-            width: double.infinity,
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: const Color(0xFFE0E6ED)),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.05),
-                    blurRadius: 10,
-                    offset: const Offset(0, 4),
-                  ),
-                ],
-              ),
-              child: Row(
-                children: [
-                  const Icon(
-                    Icons.search,
-                    color: Color(0xFF0E5FD8), // medical blue
-                  ),
-                  const SizedBox(width: 10),
-
-                  Expanded(
-                    child: TextField(
-                      decoration: const InputDecoration(
-                        hintText: "Search courses,books…",
-                        hintStyle: TextStyle(color: Colors.grey, fontSize: 15),
-                        border: InputBorder.none,
-                        isCollapsed: true,
-                      ),
-                      style: const TextStyle(
-                        fontSize: 15,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                  ),
-
-                  Container(
-                    height: 36,
-                    width: 36,
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF0E5FD8).withOpacity(0.12),
-                      borderRadius: BorderRadius.circular(6),
-                    ),
-                    child: const Icon(
-                      Icons.tune,
-                      size: 18,
-                      color: Color(0xFF0E5FD8),
-                    ),
-                  ),
-                ],
-              ),
             ),
-          ),
-          const SizedBox(height: 4),
-          _buildMarquee(),
-          const SizedBox(height: 8),
 
-          /// Hero Banner
-          // ------------------ CAROUSEL ------------------
-          SizedBox(
-            height: 200,
-            child: PageView.builder(
-              controller: _controller,
-              itemCount: bannerImages.length,
-              onPageChanged: (i) {
-                setState(() => _currentIndex = i);
-              },
-              itemBuilder: (context, index) {
-                return AnimatedPadding(
-                  duration: const Duration(milliseconds: 400),
-                  padding: EdgeInsets.symmetric(
-                    horizontal: index == _currentIndex ? 4 : 4,
+            const SizedBox(height: 8),
+
+            /// Level Filter
+
+            /// Categories
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                // LEFT: Title + subtitle
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: const [
+                    Text(
+                      "Categories",
+                      style: TextStyle(
+                        fontSize: 22,
+                        fontWeight: FontWeight.w700,
+                        color: Color(0xFF1F3C68),
+                      ),
+                    ),
+                  ],
+                ),
+
+                // RIGHT: View all
+                GestureDetector(
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (_) => MedicalStoreScreen()),
+                    );
+                  },
+                  child: const Text(
+                    "View all",
+                    style: TextStyle(
+                      fontSize: 15,
+                      color: Color(0xFF0E5FD8), // medical blue
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(10),
-                    child: Stack(
-                      fit: StackFit.expand,
+                ),
+              ],
+            ),
+
+            const SizedBox(height: 12),
+
+            /// 🔹 FULL-WIDTH CATEGORY CARDS (HIGHLIGHTED)
+            Column(
+              children: [
+                GestureDetector(
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => ThesisAssistanceScreen(),
+                      ),
+                    );
+                  },
+                  child: Container(
+                    margin: const EdgeInsets.only(bottom: 12),
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(14),
+                      gradient: const LinearGradient(
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                        colors: [
+                          Color(0xFFEAF3FF), // soft medical blue
+                          Color(0xFFFFFFFF),
+                        ],
+                      ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.15),
+                          blurRadius: 12,
+                          offset: const Offset(0, 6),
+                        ),
+                      ],
+                    ),
+                    child: Row(
                       children: [
-                        // 🖼 IMAGE
-                        bannerImages.isEmpty
-                            ? const SizedBox()
-                            : ClipRRect(
-                                borderRadius: BorderRadius.circular(10),
-                                child: Image.network(
-                                  bannerImages[index],
-                                  fit: BoxFit.cover,
-                                  errorBuilder: (_, __, ___) =>
-                                      Container(color: Colors.grey.shade300),
+                        /// ICON
+                        Container(
+                          height: 42,
+                          width: 42,
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF0E5FD8).withOpacity(0.12),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: const Icon(
+                            Icons.school,
+                            size: 22,
+                            color: Color(0xFF0E5FD8),
+                          ),
+                        ),
+
+                        const SizedBox(width: 14),
+
+                        /// TEXT (FIXED NAME)
+                        const Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                "Thesis Assistance",
+                                style: TextStyle(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.w700,
+                                  color: Color(0xFF1F3C68),
                                 ),
                               ),
+                              SizedBox(height: 4),
+                              Text(
+                                "Explore Publication",
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  color: Color(0xFF1F3C68),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
 
-                        // 🌫 DARK GRADIENT OVERLAY
-                        // Container(
-                        //   decoration: const BoxDecoration(
-                        //     gradient: LinearGradient(
-                        //       begin: Alignment.bottomCenter,
-                        //       end: Alignment.topCenter,
-                        //       colors: [Colors.black54, Colors.transparent],
-                        //     ),
-                        //   ),
-                        // ),
+                        /// ARROW
+                        Icon(
+                          Icons.arrow_forward_ios,
+                          size: 16,
+                          color: Colors.black45,
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
 
-                        // 🧠 TEXT
+            GridView.builder(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              itemCount: categories.length,
+              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: 3,
+                childAspectRatio: 0.99,
+                crossAxisSpacing: 12,
+                mainAxisSpacing: 12,
+              ),
+              itemBuilder: (context, i) {
+                return InkWell(
+                  borderRadius: BorderRadius.circular(8),
+                  onTap: () {
+                    if (i == 1) {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => const MedicalStoreScreen(
+                            initialCategory: "MD/MS",
+                          ),
+                        ),
+                      );
+                    } else if (i == 2) {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => const MedicalStoreScreen(
+                            initialCategory: "DM/DrNB",
+                          ),
+                        ),
+                      );
+                    } else {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) =>
+                              const MedicalStoreScreen(initialCategory: "MBBS"),
+                        ),
+                      );
+                    }
+                    // TODO: navigate / filter by category
+                  },
+                  child: Container(
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(12),
+                      gradient: const LinearGradient(
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                        colors: [
+                          Color(0xFFEAF3FF), // soft medical blue
+                          Color(0xFFFFFFFF),
+                        ],
+                      ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.06),
+                          blurRadius: 10,
+                          offset: const Offset(0, 6),
+                        ),
+                      ],
+                      border: Border.all(color: const Color(0xFFDDE8F5)),
+                    ),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 0,
+                    ),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        // 🔹 ICON
+                        Container(
+                          height: 42,
+                          width: 42,
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF0E5FD8).withOpacity(0.12),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: const Icon(
+                            Icons.school,
+                            size: 22,
+                            color: Color(0xFF0E5FD8),
+                          ),
+                        ),
+
+                        const SizedBox(height: 6),
+
+                        // 🔹 TITLE
+                        Text(
+                          categories[i],
+                          textAlign: TextAlign.center,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w700,
+                            color: Color(0xFF1F3C68),
+                          ),
+                        ),
+
+                        const SizedBox(height: 1),
+
+                        // 🔹 SUB TEXT (optional – future ready)
+                        Text(
+                          coursess[i],
+                          textAlign: TextAlign.center,
+                          maxLines: 2,
+                          style: const TextStyle(
+                            fontSize: 10,
+                            fontWeight: FontWeight.w400,
+                            color: Color(0xFF6B7C93),
+                          ),
+                        ),
                       ],
                     ),
                   ),
                 );
               },
             ),
-          ),
 
-          const SizedBox(height: 5),
+            const SizedBox(height: 12),
 
-          // 🔘 INDICATORS
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: List.generate(
-              bannerImages.length,
-              (i) => AnimatedContainer(
-                duration: const Duration(milliseconds: 300),
-                margin: const EdgeInsets.symmetric(horizontal: 4),
-                width: _currentIndex == i ? 18 : 8,
-                height: 8,
-                decoration: BoxDecoration(
-                  color: _currentIndex == i
-                      ? const Color(0xFF4F46E5) // brand indigo
-                      : Colors.grey.shade400,
-                  borderRadius: BorderRadius.circular(10),
-                ),
-              ),
+            /// Courses
+            /// ---------------- POPULAR COURSES ----------------
+            const Text(
+              "Popular Courses",
+              style: TextStyle(fontSize: 20, fontWeight: FontWeight.w600),
             ),
-          ),
+            const SizedBox(height: 6),
 
-          const SizedBox(height: 8),
+            ...popularCourses.map((course) {
+              final thumbnail =
+                  (course["thumbnail_url"] != null &&
+                      course["thumbnail_url"].toString().isNotEmpty)
+                  ? course["thumbnail_url"]
+                  : "https://via.placeholder.com/300x180.png?text=No+Image";
 
-          /// Level Filter
-
-          /// Categories
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              // LEFT: Title + subtitle
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: const [
-                  Text(
-                    "Categories",
-                    style: TextStyle(
-                      fontSize: 22,
-                      fontWeight: FontWeight.w700,
-                      color: Color(0xFF1F3C68),
-                    ),
-                  ),
-                ],
-              ),
-
-              // RIGHT: View all
-              GestureDetector(
+              return InkWell(
                 onTap: () {
                   Navigator.push(
                     context,
-                    MaterialPageRoute(builder: (_) => MedicalStoreScreen()),
-                  );
-                },
-                child: const Text(
-                  "View all",
-                  style: TextStyle(
-                    fontSize: 15,
-                    color: Color(0xFF0E5FD8), // medical blue
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ),
-            ],
-          ),
-
-          const SizedBox(height: 12),
-
-          /// 🔹 FULL-WIDTH CATEGORY CARDS (HIGHLIGHTED)
-          Column(
-            children: [
-              GestureDetector(
-                onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (_) => ThesisAssistanceScreen()),
-                  );
-                },
-                child: Container(
-                  margin: const EdgeInsets.only(bottom: 12),
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(14),
-                    gradient: const LinearGradient(
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                      colors: [
-                        Color(0xFFEAF3FF), // soft medical blue
-                        Color(0xFFFFFFFF),
-                      ],
-                    ),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(0.15),
-                        blurRadius: 12,
-                        offset: const Offset(0, 6),
+                    MaterialPageRoute(
+                      builder: (_) => CourseDetailScreen(
+                        data: course, // ✅ FULL COURSE MAP
+                        option: "course",
+                        isLocked: true, // 👈 identify type
                       ),
-                    ],
-                  ),
+                    ),
+                  );
+                },
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 8),
                   child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      /// ICON
-                      Container(
-                        height: 42,
-                        width: 42,
-                        decoration: BoxDecoration(
-                          color: const Color(0xFF0E5FD8).withOpacity(0.12),
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: const Icon(
-                          Icons.school,
-                          size: 22,
-                          color: Color(0xFF0E5FD8),
-                        ),
-                      ),
-
-                      const SizedBox(width: 14),
-
-                      /// TEXT (FIXED NAME)
-                      const Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
+                      // 🖼 Thumbnail
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(6),
+                        child: Stack(
+                          alignment: Alignment.center,
                           children: [
-                            Text(
-                              "Thesis Assistance",
-                              style: TextStyle(
-                                fontSize: 18,
-                                fontWeight: FontWeight.w700,
-                                color: Color(0xFF1F3C68),
+                            Image.network(
+                              thumbnail,
+                              width: 140,
+                              height: 80,
+                              fit: BoxFit.cover,
+                              errorBuilder: (_, __, ___) => Container(
+                                width: 140,
+                                height: 80,
+                                color: Colors.grey.shade300,
+                                child: const Icon(Icons.image_not_supported),
                               ),
                             ),
-                            SizedBox(height: 4),
-                            Text(
-                              "Explore Publication",
-                              style: TextStyle(
-                                fontSize: 13,
-                                color: Color(0xFF1F3C68),
+                            Container(
+                              width: 140,
+                              height: 80,
+                              color: Colors.black.withOpacity(0.15),
+                            ),
+                            Container(
+                              width: 36,
+                              height: 36,
+                              decoration: BoxDecoration(
+                                color: Colors.black.withOpacity(0.55),
+                                shape: BoxShape.circle,
+                              ),
+                              child: const Icon(
+                                Icons.play_arrow,
+                                color: Colors.white,
+                                size: 22,
                               ),
                             ),
                           ],
                         ),
                       ),
 
-                      /// ARROW
-                      Icon(
-                        Icons.arrow_forward_ios,
-                        size: 16,
-                        color: Colors.black45,
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ],
-          ),
+                      const SizedBox(width: 12),
 
-          GridView.builder(
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            itemCount: categories.length,
-            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: 3,
-              childAspectRatio: 0.99,
-              crossAxisSpacing: 12,
-              mainAxisSpacing: 12,
-            ),
-            itemBuilder: (context, i) {
-              return InkWell(
-                borderRadius: BorderRadius.circular(8),
-                onTap: () {
-                  if (i == 1) {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) =>
-                            const MedicalStoreScreen(initialCategory: "MD/MS"),
-                      ),
-                    );
-                  } else if (i == 2) {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => const MedicalStoreScreen(
-                          initialCategory: "DM/DrNB",
-                        ),
-                      ),
-                    );
-                  } else {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) =>
-                            const MedicalStoreScreen(initialCategory: "MBBS"),
-                      ),
-                    );
-                  }
-                  // TODO: navigate / filter by category
-                },
-                child: Container(
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(12),
-                    gradient: const LinearGradient(
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                      colors: [
-                        Color(0xFFEAF3FF), // soft medical blue
-                        Color(0xFFFFFFFF),
-                      ],
-                    ),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(0.06),
-                        blurRadius: 10,
-                        offset: const Offset(0, 6),
-                      ),
-                    ],
-                    border: Border.all(color: const Color(0xFFDDE8F5)),
-                  ),
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 0,
-                  ),
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      // 🔹 ICON
-                      Container(
-                        height: 42,
-                        width: 42,
-                        decoration: BoxDecoration(
-                          color: const Color(0xFF0E5FD8).withOpacity(0.12),
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: const Icon(
-                          Icons.school,
-                          size: 22,
-                          color: Color(0xFF0E5FD8),
-                        ),
-                      ),
-
-                      const SizedBox(height: 6),
-
-                      // 🔹 TITLE
-                      Text(
-                        categories[i],
-                        textAlign: TextAlign.center,
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w700,
-                          color: Color(0xFF1F3C68),
-                        ),
-                      ),
-
-                      const SizedBox(height: 1),
-
-                      // 🔹 SUB TEXT (optional – future ready)
-                      Text(
-                        coursess[i],
-                        textAlign: TextAlign.center,
-                        maxLines: 2,
-                        style: const TextStyle(
-                          fontSize: 10,
-                          fontWeight: FontWeight.w400,
-                          color: Color(0xFF6B7C93),
+                      // 📄 Details
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              course["title"] ?? "",
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                fontSize: 14.5,
+                                fontWeight: FontWeight.w600,
+                                color: Color(0xFF1F3C68),
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              "${course["videos"]?.length ?? 0} videos • Full access",
+                              style: const TextStyle(
+                                fontSize: 12,
+                                color: Colors.black45,
+                              ),
+                            ),
+                            const SizedBox(height: 6),
+                            Text(
+                              "₹${course["price"] ?? ""}",
+                              style: const TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.bold,
+                                color: Color(0xFF0E5FD8),
+                              ),
+                            ),
+                          ],
                         ),
                       ),
                     ],
                   ),
                 ),
               );
-            },
-          ),
+            }).toList(),
 
-          const SizedBox(height: 12),
+            /// ---------------- POPULAR BOOKS ----------------
+            const SizedBox(height: 14),
+            const Text(
+              "Popular Books",
+              style: TextStyle(fontSize: 20, fontWeight: FontWeight.w600),
+            ),
+            const SizedBox(height: 6),
 
-          /// Courses
-          /// ---------------- POPULAR COURSES ----------------
-          const Text(
-            "Popular Courses",
-            style: TextStyle(fontSize: 20, fontWeight: FontWeight.w600),
-          ),
-          const SizedBox(height: 6),
+            ...popularBooks.map((book) {
+              final thumbnail =
+                  (book["thumbnail_url"] != null &&
+                      book["thumbnail_url"].toString().isNotEmpty)
+                  ? book["thumbnail_url"]
+                  : "https://via.placeholder.com/300x180.png?text=No+Image";
 
-          ...popularCourses.map((course) {
-            final thumbnail =
-                (course["thumbnail_url"] != null &&
-                    course["thumbnail_url"].toString().isNotEmpty)
-                ? course["thumbnail_url"]
-                : "https://via.placeholder.com/300x180.png?text=No+Image";
-
-            return InkWell(
-              onTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) => CourseDetailScreen(
-                      data: course, // ✅ FULL COURSE MAP
-                      option: "course",
-                      isLocked: true, // 👈 identify type
+              return InkWell(
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => CourseDetailScreen(
+                        data: book, // ✅ FULL BOOK MAP
+                        option: "book",
+                        isLocked: true,
+                      ),
                     ),
-                  ),
-                );
-              },
-              child: Padding(
-                padding: const EdgeInsets.symmetric(vertical: 8),
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // 🖼 Thumbnail
-                    ClipRRect(
-                      borderRadius: BorderRadius.circular(6),
-                      child: Stack(
-                        alignment: Alignment.center,
-                        children: [
-                          Image.network(
-                            thumbnail,
-                            width: 140,
-                            height: 80,
-                            fit: BoxFit.cover,
-                            errorBuilder: (_, __, ___) => Container(
+                  );
+                },
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 8),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // 🖼 Thumbnail
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(6),
+                        child: Stack(
+                          alignment: Alignment.center,
+                          children: [
+                            Image.network(
+                              thumbnail,
                               width: 140,
                               height: 80,
-                              color: Colors.grey.shade300,
-                              child: const Icon(Icons.image_not_supported),
+                              fit: BoxFit.cover,
+                              errorBuilder: (_, __, ___) => Container(
+                                width: 140,
+                                height: 80,
+                                color: Colors.grey.shade300,
+                                child: const Icon(Icons.image_not_supported),
+                              ),
                             ),
-                          ),
-                          Container(
-                            width: 140,
-                            height: 80,
-                            color: Colors.black.withOpacity(0.15),
-                          ),
-                          Container(
-                            width: 36,
-                            height: 36,
-                            decoration: BoxDecoration(
-                              color: Colors.black.withOpacity(0.55),
-                              shape: BoxShape.circle,
-                            ),
-                            child: const Icon(
-                              Icons.play_arrow,
-                              color: Colors.white,
-                              size: 22,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-
-                    const SizedBox(width: 12),
-
-                    // 📄 Details
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            course["title"] ?? "",
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(
-                              fontSize: 14.5,
-                              fontWeight: FontWeight.w600,
-                              color: Color(0xFF1F3C68),
-                            ),
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            "${course["videos"]?.length ?? 0} videos • Full access",
-                            style: const TextStyle(
-                              fontSize: 12,
-                              color: Colors.black45,
-                            ),
-                          ),
-                          const SizedBox(height: 6),
-                          Text(
-                            "₹${course["price"] ?? ""}",
-                            style: const TextStyle(
-                              fontSize: 14,
-                              fontWeight: FontWeight.bold,
-                              color: Color(0xFF0E5FD8),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            );
-          }).toList(),
-
-          /// ---------------- POPULAR BOOKS ----------------
-          const SizedBox(height: 14),
-          const Text(
-            "Popular Books",
-            style: TextStyle(fontSize: 20, fontWeight: FontWeight.w600),
-          ),
-          const SizedBox(height: 6),
-
-          ...popularBooks.map((book) {
-            final thumbnail =
-                (book["thumbnail_url"] != null &&
-                    book["thumbnail_url"].toString().isNotEmpty)
-                ? book["thumbnail_url"]
-                : "https://via.placeholder.com/300x180.png?text=No+Image";
-
-            return InkWell(
-              onTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) => CourseDetailScreen(
-                      data: book, // ✅ FULL BOOK MAP
-                      option: "book",
-                      isLocked: true,
-                    ),
-                  ),
-                );
-              },
-              child: Padding(
-                padding: const EdgeInsets.symmetric(vertical: 8),
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // 🖼 Thumbnail
-                    ClipRRect(
-                      borderRadius: BorderRadius.circular(6),
-                      child: Stack(
-                        alignment: Alignment.center,
-                        children: [
-                          Image.network(
-                            thumbnail,
-                            width: 140,
-                            height: 80,
-                            fit: BoxFit.cover,
-                            errorBuilder: (_, __, ___) => Container(
+                            Container(
                               width: 140,
                               height: 80,
-                              color: Colors.grey.shade300,
-                              child: const Icon(Icons.image_not_supported),
+                              color: Colors.black.withOpacity(0.15),
                             ),
-                          ),
-                          Container(
-                            width: 140,
-                            height: 80,
-                            color: Colors.black.withOpacity(0.15),
-                          ),
-                          Container(
-                            width: 36,
-                            height: 36,
-                            decoration: BoxDecoration(
-                              color: Colors.black.withOpacity(0.55),
-                              shape: BoxShape.circle,
+                            Container(
+                              width: 36,
+                              height: 36,
+                              decoration: BoxDecoration(
+                                color: Colors.black.withOpacity(0.55),
+                                shape: BoxShape.circle,
+                              ),
+                              child: const Icon(
+                                Icons.picture_as_pdf,
+                                color: Colors.white,
+                                size: 20,
+                              ),
                             ),
-                            child: const Icon(
-                              Icons.picture_as_pdf,
-                              color: Colors.white,
-                              size: 20,
-                            ),
-                          ),
-                        ],
+                          ],
+                        ),
                       ),
-                    ),
 
-                    const SizedBox(width: 12),
+                      const SizedBox(width: 12),
 
-                    // 📄 Details
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            book["title"] ?? "",
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(
-                              fontSize: 14.5,
-                              fontWeight: FontWeight.w600,
-                              color: Color(0xFF1F3C68),
+                      // 📄 Details
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              book["title"] ?? "",
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                fontSize: 14.5,
+                                fontWeight: FontWeight.w600,
+                                color: Color(0xFF1F3C68),
+                              ),
                             ),
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            "${book["pdfs"]?.length ?? 0} PDFs • Digital Book",
-                            style: const TextStyle(
-                              fontSize: 12,
-                              color: Colors.black45,
+                            const SizedBox(height: 4),
+                            Text(
+                              "${book["pdfs"]?.length ?? 0} PDFs • Digital Book",
+                              style: const TextStyle(
+                                fontSize: 12,
+                                color: Colors.black45,
+                              ),
                             ),
-                          ),
-                          const SizedBox(height: 6),
-                          Text(
-                            "₹${book["price"] ?? ""}",
-                            style: const TextStyle(
-                              fontSize: 14,
-                              fontWeight: FontWeight.bold,
-                              color: Color(0xFF0E5FD8),
+                            const SizedBox(height: 6),
+                            Text(
+                              "₹${book["price"] ?? ""}",
+                              style: const TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.bold,
+                                color: Color(0xFF0E5FD8),
+                              ),
                             ),
-                          ),
-                        ],
+                          ],
+                        ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
-              ),
-            );
-          }).toList(),
-        ],
+              );
+            }).toList(),
+          ],
+        ),
       ),
     );
   }

@@ -138,27 +138,50 @@ class _MedicalStoreScreenState extends State<MedicalStoreScreen> {
 
               Wrap(
                 spacing: 10,
-                children: categories.map((cat) {
-                  final name = cat["name"];
-                  final active = selectedCategoryName == name;
-
-                  return ChoiceChip(
-                    label: Text(name),
-                    selected: active,
+                children: [
+                  /// ✅ ALL OPTION
+                  ChoiceChip(
+                    label: const Text("All"),
+                    selected: selectedCategoryName == "All",
                     selectedColor: const Color(0xFF0E5FD8),
                     labelStyle: TextStyle(
-                      color: active ? Colors.white : Colors.black,
+                      color: selectedCategoryName == "All"
+                          ? Colors.white
+                          : Colors.black,
                       fontWeight: FontWeight.w600,
                     ),
                     onSelected: (_) {
                       setState(() {
-                        selectedCategoryName = name;
-                        selectedCategoryId = cat["id"];
+                        selectedCategoryName = "All";
+                        selectedCategoryId = null;
                       });
                       Navigator.pop(context);
                     },
-                  );
-                }).toList(),
+                  ),
+
+                  /// EXISTING CATEGORIES
+                  ...categories.map((cat) {
+                    final name = cat["name"];
+                    final active = selectedCategoryName == name;
+
+                    return ChoiceChip(
+                      label: Text(name),
+                      selected: active,
+                      selectedColor: const Color(0xFF0E5FD8),
+                      labelStyle: TextStyle(
+                        color: active ? Colors.white : Colors.black,
+                        fontWeight: FontWeight.w600,
+                      ),
+                      onSelected: (_) {
+                        setState(() {
+                          selectedCategoryName = name;
+                          selectedCategoryId = cat["id"];
+                        });
+                        Navigator.pop(context);
+                      },
+                    );
+                  }).toList(),
+                ],
               ),
 
               const SizedBox(height: 20),
@@ -204,9 +227,11 @@ class _MedicalStoreScreenState extends State<MedicalStoreScreen> {
   Widget build(BuildContext context) {
     final rawData = selectedType == "Courses" ? courses : books;
 
-    final data = rawData
-        .where((item) => item["category_name"] == selectedCategoryName)
-        .toList();
+    final data = selectedCategoryName == "All"
+        ? rawData
+        : rawData
+              .where((item) => item["category_name"] == selectedCategoryName)
+              .toList();
 
     if (loadingCategories || loadingCourses || loadingBooks) {
       return const Center(child: CircularProgressIndicator());
@@ -282,7 +307,7 @@ class _MedicalStoreScreenState extends State<MedicalStoreScreen> {
               padding: const EdgeInsets.symmetric(horizontal: 14),
               decoration: BoxDecoration(
                 color: Colors.white,
-                borderRadius: BorderRadius.circular(14),
+                borderRadius: BorderRadius.circular(12),
                 border: Border.all(color: const Color(0xFFE2E8F0)),
               ),
               child: Row(
@@ -292,7 +317,7 @@ class _MedicalStoreScreenState extends State<MedicalStoreScreen> {
                   const Expanded(
                     child: TextField(
                       decoration: InputDecoration(
-                        hintText: "Search courses, books, subjects…",
+                        hintText: "Search courses, books..",
                         border: InputBorder.none,
                       ),
                     ),
@@ -353,9 +378,12 @@ class _MedicalStoreScreenState extends State<MedicalStoreScreen> {
                 ),
                 const SizedBox(width: 6),
                 Text(
-                  "Showing $selectedType for ",
+                  selectedCategoryName == "All"
+                      ? "Showing $selectedType"
+                      : "Showing $selectedType for ",
                   style: const TextStyle(fontSize: 17, color: Colors.black54),
                 ),
+
                 InkWell(
                   onTap: _openFilterSheet,
                   child: Text(

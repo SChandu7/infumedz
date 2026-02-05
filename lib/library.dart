@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import 'package:infumedz/loginsignup.dart';
 import 'package:infumedz/main.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -24,7 +25,7 @@ class _LibraryPageState extends State<LibraryPage> {
   }
 
   Future<Map<String, List<Map<String, dynamic>>>> fetchLibrary() async {
-    final userId = await SessionManager.getUserId();
+    final userId = await UserSession.getUserId();
 
     if (userId == null) {
       return {"courses": [], "books": []};
@@ -101,7 +102,7 @@ class _LibraryPageState extends State<LibraryPage> {
                 ...books.map((b) => _LibraryPdfCard(pdf: b)),
                 ElevatedButton(
                   onPressed: () async {
-                    await SessionManager.logout();
+                    await UserSession.logout();
                     if (mounted) {
                       Navigator.push(
                         context,
@@ -341,24 +342,24 @@ class _EmptyLibrary extends StatelessWidget {
 
 /* ---------------- SESSION ---------------- */
 
-class SessionManager {
-  static const _keyUserId = "user_id";
+// class SessionManager {
+//   static const _keyUserId = "user_id";
 
-  static Future<void> saveUserId(String userId) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(_keyUserId, userId);
-  }
+//   static Future<void> saveUserId(String userId) async {
+//     final prefs = await SharedPreferences.getInstance();
+//     await prefs.setString(_keyUserId, userId);
+//   }
 
-  static Future<String?> getUserId() async {
-    final prefs = await SharedPreferences.getInstance();
-    return prefs.getString(_keyUserId);
-  }
+//   static Future<String?> getUserId() async {
+//     final prefs = await SharedPreferences.getInstance();
+//     return prefs.getString(_keyUserId);
+//   }
 
-  static Future<void> logout() async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.remove(_keyUserId);
-  }
-}
+//   static Future<void> logout() async {
+//     final prefs = await SharedPreferences.getInstance();
+//     await prefs.remove(_keyUserId);
+//   }
+// }
 
 class CourseDetailLoaderScreen extends StatefulWidget {
   final String id;

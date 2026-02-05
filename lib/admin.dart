@@ -1139,18 +1139,98 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
       /// 🔹 APP BAR
       appBar: AppBar(
         elevation: 0,
-        backgroundColor: const Color(0xFF0E5FD8),
-        title: const Text(
-          "Admin Panel",
-          style: TextStyle(fontWeight: FontWeight.w700),
+        toolbarHeight: 78,
+        backgroundColor: Colors.transparent,
+        flexibleSpace: Container(
+          decoration: const BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [Color(0xFF0E5FD8), Color(0xFF3B82F6)],
+            ),
+          ),
         ),
+
+        titleSpacing: 20,
+        title: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: const [
+            Text(
+              "Dashboard",
+              style: TextStyle(
+                fontSize: 24,
+                fontWeight: FontWeight.w800,
+                letterSpacing: 0.3,
+              ),
+            ),
+            SizedBox(height: 2),
+            Text(
+              "Monitor & control your platform",
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w400,
+                color: Colors.white70,
+              ),
+            ),
+          ],
+        ),
+
         actions: [
-          const SizedBox(width: 8),
-          const CircleAvatar(
-            backgroundColor: Colors.white,
-            child: Icon(Icons.notifications_none, color: Color(0xFF0E5FD8)),
+          /// 🔴 LIVE STATUS
+          Container(
+            margin: const EdgeInsets.only(right: 10),
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+            decoration: BoxDecoration(
+              color: Colors.greenAccent.withOpacity(0.25),
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: const Text(
+              "LIVE",
+              style: TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.bold,
+                color: Colors.white,
+              ),
+            ),
           ),
           const SizedBox(width: 12),
+
+          /// 🔔 NOTIFICATIONS
+          Container(
+            margin: const EdgeInsets.only(right: 16),
+            child: Stack(
+              children: [
+                CircleAvatar(
+                  radius: 20,
+                  backgroundColor: Colors.white,
+                  child: IconButton(
+                    icon: const Icon(
+                      Icons.notifications_none_rounded,
+                      color: Color(0xFF0E5FD8),
+                    ),
+                    onPressed: () {
+                      // TODO: open admin notifications
+                    },
+                  ),
+                ),
+                const SizedBox(width: 12),
+
+                // 🔴 NOTIFICATION DOT
+                Positioned(
+                  top: 6,
+                  right: 6,
+                  child: Container(
+                    height: 8,
+                    width: 8,
+                    decoration: const BoxDecoration(
+                      color: Colors.red,
+                      shape: BoxShape.circle,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
         ],
       ),
 
@@ -1161,45 +1241,88 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             /// ===== ADMIN HEADER =====
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Row(
-                  children: [
-                    CircleAvatar(
-                      radius: 26,
-                      backgroundColor: Colors.indigo.shade100,
-                      child: const Icon(
-                        Icons.person,
-                        size: 30,
-                        color: Colors.indigo,
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: const [
-                        Center(
-                          child: Text(
-                            "Akif Ahamad",
-                            style: TextStyle(
-                              fontSize: 20,
-                              fontWeight: FontWeight.w700,
-                            ),
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: Colors.grey.shade200),
+                color: Colors.white,
+              ),
+              child: Row(
+                children: [
+                  // 👤 AVATAR + STATUS
+                  Stack(
+                    children: [
+                      CircleAvatar(
+                        radius: 26,
+                        backgroundColor: Colors.indigo.shade50,
+                        child: ClipOval(
+                          child: Image(
+                            width: 52,
+                            height: 52,
+                            fit: BoxFit.cover,
+                            image: AssetImage("assets/admin.jpg"),
+                            errorBuilder: (_, _, _) {
+                              return const Icon(
+                                Icons.security,
+                                size: 26,
+                                color: Color(0xFF0E5FD8),
+                              );
+                            },
                           ),
                         ),
+                      ),
+
+                      Positioned(
+                        bottom: 0,
+                        right: 0,
+                        child: Container(
+                          width: 12,
+                          height: 12,
+                          decoration: BoxDecoration(
+                            color: Colors.green,
+                            shape: BoxShape.circle,
+                            border: Border.all(color: Colors.white, width: 2),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+
+                  const SizedBox(width: 14),
+
+                  // 🧠 INFO
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: const [
                         Text(
-                          "Welcome back, Administrator",
-                          style: TextStyle(color: Colors.grey),
+                          "Akif Ahamad Baig",
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                        SizedBox(height: 3),
+                        Text(
+                          "Administrator",
+                          style: TextStyle(
+                            fontSize: 13,
+                            color: Colors.green,
+                            fontWeight: FontWeight.w600,
+                          ),
                         ),
                       ],
                     ),
-                  ],
-                ),
-              ],
+                  ),
+
+                  // 🔘 ACTION
+                  Icon(Icons.more_vert, color: Colors.grey),
+                ],
+              ),
             ),
 
-            const SizedBox(height: 30),
+            const SizedBox(height: 20),
 
             /// ===== KPI ROW =====
             Row(
@@ -1240,7 +1363,7 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
               ],
             ),
 
-            const SizedBox(height: 30),
+            const SizedBox(height: 10),
 
             /// ===== ANALYTICS TITLE =====
             const Text(
@@ -1248,40 +1371,153 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
               style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
             ),
 
-            const SizedBox(height: 16),
+            const SizedBox(height: 10),
 
             /// ===== CHART CARD =====
             Container(
-              height: 220,
+              height: 260,
               padding: const EdgeInsets.all(16),
               decoration: _cardDecoration(),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   const Text(
-                    "User Growth",
-                    style: TextStyle(fontWeight: FontWeight.w600),
+                    "User Growth (Last 7 Days)",
+                    style: TextStyle(fontWeight: FontWeight.w700, fontSize: 15),
                   ),
-                  const SizedBox(height: 12),
+                  const SizedBox(height: 16),
+
                   Expanded(
                     child: LineChart(
                       LineChartData(
-                        gridData: FlGridData(show: false),
-                        titlesData: FlTitlesData(show: false),
+                        minY: 0,
+                        maxY: 120,
+                        gridData: FlGridData(
+                          show: true,
+                          drawVerticalLine: false,
+                          horizontalInterval: 20,
+                          getDrawingHorizontalLine: (value) {
+                            return FlLine(
+                              color: Colors.grey.withOpacity(0.15),
+                              strokeWidth: 1,
+                            );
+                          },
+                        ),
+
                         borderData: FlBorderData(show: false),
+
+                        titlesData: FlTitlesData(
+                          topTitles: AxisTitles(
+                            sideTitles: SideTitles(showTitles: false),
+                          ),
+                          rightTitles: AxisTitles(
+                            sideTitles: SideTitles(showTitles: false),
+                          ),
+
+                          leftTitles: AxisTitles(
+                            sideTitles: SideTitles(
+                              showTitles: true,
+                              interval: 20,
+                              reservedSize: 40,
+                              getTitlesWidget: (value, meta) {
+                                return Text(
+                                  value.toInt().toString(),
+                                  style: const TextStyle(
+                                    fontSize: 11,
+                                    color: Colors.grey,
+                                  ),
+                                );
+                              },
+                            ),
+                          ),
+
+                          bottomTitles: AxisTitles(
+                            sideTitles: SideTitles(
+                              showTitles: true,
+                              interval: 1,
+                              getTitlesWidget: (value, meta) {
+                                const days = [
+                                  "Mon",
+                                  "Tue",
+                                  "Wed",
+                                  "Thu",
+                                  "Fri",
+                                  "Sat",
+                                  "Sun",
+                                ];
+                                if (value.toInt() < days.length) {
+                                  return Padding(
+                                    padding: const EdgeInsets.only(top: 6),
+                                    child: Text(
+                                      days[value.toInt()],
+                                      style: const TextStyle(
+                                        fontSize: 11,
+                                        color: Colors.grey,
+                                      ),
+                                    ),
+                                  );
+                                }
+                                return const SizedBox();
+                              },
+                            ),
+                          ),
+                        ),
+
+                        lineTouchData: LineTouchData(
+                          enabled: true,
+                          touchTooltipData: LineTouchTooltipData(
+                            tooltipBgColor: Colors.black87,
+                            getTooltipItems: (spots) {
+                              return spots.map((spot) {
+                                return LineTooltipItem(
+                                  "${spot.y.toInt()} users",
+                                  const TextStyle(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                );
+                              }).toList();
+                            },
+                          ),
+                        ),
+
                         lineBarsData: [
                           LineChartBarData(
-                            spots: const [
-                              FlSpot(0, 1),
-                              FlSpot(1, 2),
-                              FlSpot(2, 1.5),
-                              FlSpot(3, 3),
-                              FlSpot(4, 3.8),
-                            ],
                             isCurved: true,
+                            curveSmoothness: 0.25,
                             barWidth: 4,
-                            dotData: FlDotData(show: false),
-                            color: Colors.indigo,
+                            color: const Color(0xFF0E5FD8),
+                            belowBarData: BarAreaData(
+                              show: true,
+                              gradient: LinearGradient(
+                                begin: Alignment.topCenter,
+                                end: Alignment.bottomCenter,
+                                colors: [
+                                  const Color(0xFF0E5FD8).withOpacity(0.35),
+                                  Colors.transparent,
+                                ],
+                              ),
+                            ),
+                            dotData: FlDotData(
+                              show: true,
+                              getDotPainter: (spot, percent, bar, index) {
+                                return FlDotCirclePainter(
+                                  radius: 3.5,
+                                  color: Colors.white,
+                                  strokeWidth: 2,
+                                  strokeColor: const Color(0xFF0E5FD8),
+                                );
+                              },
+                            ),
+                            spots: const [
+                              FlSpot(0, 40),
+                              FlSpot(1, 55),
+                              FlSpot(2, 48),
+                              FlSpot(3, 70),
+                              FlSpot(4, 90),
+                              FlSpot(5, 105),
+                              FlSpot(6, 115),
+                            ],
                           ),
                         ],
                       ),
@@ -1291,28 +1527,92 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
               ),
             ),
 
-            const SizedBox(height: 30),
+            const SizedBox(height: 20),
 
             /// ===== RECENT ACTIVITY =====
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Row(
+                  children: const [
+                    Icon(Icons.auto_awesome, color: Color(0xFF0E5FD8)),
+                    SizedBox(width: 8),
+                    Text(
+                      "Recent Activity",
+                      style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: 0.2,
+                      ),
+                    ),
+                  ],
+                ),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 4,
+                  ),
+                  decoration: BoxDecoration(
+                    color: Colors.green.withOpacity(0.12),
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: const Text(
+                    "LIVE",
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.green,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 6),
             const Text(
-              "Recent Activity",
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
+              "The Latest Activities held ",
+              style: TextStyle(fontSize: 13, color: Colors.grey),
             ),
 
             const SizedBox(height: 16),
-
             Container(
               padding: const EdgeInsets.all(16),
               decoration: _cardDecoration(),
               child: Column(
                 children: const [
-                  _ActivityTile("New [User Name] Registered", "2 mins ago"),
-                  Divider(),
-                  _ActivityTile("[Coursename] Purchased", "10 mins ago"),
-                  Divider(),
-                  _ActivityTile("Thesis Request Submitted", "1 hour ago"),
-                  Divider(),
-                  _ActivityTile("Here We'll get User Actions", "1 hour ago"),
+                  _SmartActivityTile(
+                    icon: Icons.person_add_alt_1,
+                    title: "New user registered",
+                    subtitle: "MBBS student joined the platform",
+                    time: "2 mins ago",
+                    color: Colors.green,
+                  ),
+                  Divider(height: 26),
+
+                  _SmartActivityTile(
+                    icon: Icons.shopping_cart_checkout,
+                    title: "Course purchased",
+                    subtitle: "MD Medicine – Clinical Q&A",
+                    time: "10 mins ago",
+                    color: Colors.blue,
+                  ),
+                  Divider(height: 26),
+
+                  _SmartActivityTile(
+                    icon: Icons.description,
+                    title: "Thesis request submitted",
+                    subtitle: "Awaiting admin review",
+                    time: "1 hour ago",
+                    color: Colors.orange,
+                  ),
+                  Divider(height: 26),
+
+                  _SmartActivityTile(
+                    icon: Icons.insights,
+                    title: "User activity recorded",
+                    subtitle: "Learning progress updated",
+                    time: "1 hour ago",
+                    color: Colors.purple,
+                  ),
                 ],
               ),
             ),
@@ -1325,90 +1625,78 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
       /// 🔹 FLOATING ACTION MENU
     );
   }
+}
 
-  /// 🔹 FLOATING ACTION BUTTON WITH ANIMATION
-  Widget _buildExpandableFab() {
-    return Stack(
-      alignment: Alignment.bottomRight,
+class _SmartActivityTile extends StatelessWidget {
+  final IconData icon;
+  final String title;
+  final String subtitle;
+  final String time;
+  final Color color;
+
+  const _SmartActivityTile({
+    required this.icon,
+    required this.title,
+    required this.subtitle,
+    required this.time,
+    required this.color,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        if (fabOpen)
-          GestureDetector(
-            onTap: () => setState(() => fabOpen = false),
-            child: Container(
-              // color: Colors.black.withOpacity(0.2),
-              width: double.infinity,
-              height: double.infinity,
-            ),
+        // ICON
+        Container(
+          padding: const EdgeInsets.all(10),
+          decoration: BoxDecoration(
+            color: color.withOpacity(0.12),
+            shape: BoxShape.circle,
           ),
+          child: Icon(icon, color: color, size: 20),
+        ),
 
-        Positioned(
-          bottom: 80,
-          right: 16,
+        const SizedBox(width: 12),
+
+        // TEXT
+        Expanded(
           child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              if (fabOpen) _fabOption(Icons.add, "Add Courses"),
-
-              if (fabOpen) _fabOption(Icons.picture_as_pdf, "Add Books"),
-              if (fabOpen) _fabOption(Icons.delete, "Delete Content"),
-
-              if (fabOpen)
-                _fabOption(Icons.published_with_changes, "Data Replace"),
+              Text(
+                title,
+                style: const TextStyle(
+                  fontWeight: FontWeight.w700,
+                  fontSize: 14,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                subtitle,
+                style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+              ),
             ],
           ),
         ),
 
-        FloatingActionButton(
-          backgroundColor: const Color(0xFF0E5FD8),
-          onPressed: () => setState(() => fabOpen = !fabOpen),
-          child: AnimatedRotation(
-            turns: fabOpen ? 0.125 : 0,
-            duration: const Duration(milliseconds: 50),
-            child: const Icon(Icons.add),
+        // TIME CHIP
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+          decoration: BoxDecoration(
+            color: Colors.grey.withOpacity(0.12),
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Text(
+            time,
+            style: const TextStyle(
+              fontSize: 10,
+              fontWeight: FontWeight.w600,
+              color: Colors.grey,
+            ),
           ),
         ),
       ],
-    );
-  }
-
-  /// 🔹 FAB OPTION
-  Widget _fabOption(IconData icon, String label) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 10),
-      child: FloatingActionButton.extended(
-        heroTag: label,
-        backgroundColor: Colors.white,
-        onPressed: () {
-          if (icon == Icons.add) {
-            Navigator.push(
-              context,
-              MaterialPageRoute(builder: (_) => const AdminCourseFlow()),
-            );
-          } else if (icon == Icons.picture_as_pdf) {
-            Navigator.push(
-              context,
-              MaterialPageRoute(builder: (_) => const AdminBookFlow()),
-            );
-          } else if (icon == Icons.delete) {
-            showDialog(
-              context: context,
-              builder: (_) => const AdminDeleteDialog(),
-            );
-          } else {
-            Navigator.push(
-              context,
-              MaterialPageRoute(builder: (_) => const AdminBannerScreen()),
-            );
-          }
-        },
-        icon: Icon(icon, color: const Color(0xFF0E5FD8)),
-        label: Text(
-          label,
-          style: const TextStyle(
-            color: Color(0xFF0E5FD8),
-            fontWeight: FontWeight.w600,
-          ),
-        ),
-      ),
     );
   }
 }
