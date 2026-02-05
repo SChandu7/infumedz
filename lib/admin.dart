@@ -1179,11 +1179,13 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
                     Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: const [
-                        Text(
-                          "Akif Ahamad",
-                          style: TextStyle(
-                            fontSize: 20,
-                            fontWeight: FontWeight.w700,
+                        Center(
+                          child: Text(
+                            "Akif Ahamad",
+                            style: TextStyle(
+                              fontSize: 20,
+                              fontWeight: FontWeight.w700,
+                            ),
                           ),
                         ),
                         Text(
@@ -1304,11 +1306,13 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
               decoration: _cardDecoration(),
               child: Column(
                 children: const [
-                  _ActivityTile("New User Registered", "2 mins ago"),
+                  _ActivityTile("New [User Name] Registered", "2 mins ago"),
                   Divider(),
-                  _ActivityTile("Course Purchased", "10 mins ago"),
+                  _ActivityTile("[Coursename] Purchased", "10 mins ago"),
                   Divider(),
                   _ActivityTile("Thesis Request Submitted", "1 hour ago"),
+                  Divider(),
+                  _ActivityTile("Here We'll get User Actions", "1 hour ago"),
                 ],
               ),
             ),
@@ -1319,7 +1323,6 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
       ),
 
       /// 🔹 FLOATING ACTION MENU
-      floatingActionButton: _buildExpandableFab(),
     );
   }
 
@@ -1346,6 +1349,8 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
               if (fabOpen) _fabOption(Icons.add, "Add Courses"),
 
               if (fabOpen) _fabOption(Icons.picture_as_pdf, "Add Books"),
+              if (fabOpen) _fabOption(Icons.delete, "Delete Content"),
+
               if (fabOpen)
                 _fabOption(Icons.published_with_changes, "Data Replace"),
             ],
@@ -1382,6 +1387,11 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
             Navigator.push(
               context,
               MaterialPageRoute(builder: (_) => const AdminBookFlow()),
+            );
+          } else if (icon == Icons.delete) {
+            showDialog(
+              context: context,
+              builder: (_) => const AdminDeleteDialog(),
             );
           } else {
             Navigator.push(
@@ -2405,7 +2415,7 @@ class _AdminBannerScreenState extends State<AdminBannerScreen> {
             ),
           ),
 
-          const SizedBox(height: 20),
+          const SizedBox(height: 2),
 
           /// POPULAR CONTENT
           configCard(
@@ -2415,7 +2425,7 @@ class _AdminBannerScreenState extends State<AdminBannerScreen> {
             onTap: () => _openPopularDialog(context),
           ),
 
-          const SizedBox(height: 10),
+          const SizedBox(height: 2),
           configCard(
             icon: Icons.category_outlined,
             title: "4. Categories",
@@ -2441,6 +2451,136 @@ class _AdminBannerScreenState extends State<AdminBannerScreen> {
           ),
         ],
       ),
+    );
+  }
+}
+
+class AdminDeleteDialog extends StatefulWidget {
+  const AdminDeleteDialog({super.key});
+
+  @override
+  State<AdminDeleteDialog> createState() => _AdminDeleteDialogState();
+}
+
+class _AdminDeleteDialogState extends State<AdminDeleteDialog> {
+  String? selectedCourseId;
+  String? selectedBookId;
+
+  String deleteType = "course"; // or "book"
+
+  List<Map<String, dynamic>> courses = [];
+  List<Map<String, dynamic>> books = [];
+
+  bool loading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    loadData();
+  }
+
+  Future<void> loadData() async {
+    final cRes = await http.get(
+      Uri.parse("https://api.chandus7.in/api/infumedz/courses/"),
+    );
+
+    final bRes = await http.get(
+      Uri.parse("https://api.chandus7.in/api/infumedz/books/"),
+    );
+
+    setState(() {
+      courses = List<Map<String, dynamic>>.from(jsonDecode(cRes.body));
+      books = List<Map<String, dynamic>>.from(jsonDecode(bRes.body));
+      loading = false;
+    });
+  }
+
+  Future<void> deleteItem({required String type, required String id}) async {
+    final url = type == "course"
+        ? "https://api.chandus7.in/api/infumedz/admin/course/$id/"
+        : "https://api.chandus7.in/api/infumedz/admin/book/$id/";
+
+    final res = await http.delete(Uri.parse(url));
+
+    if (res.statusCode == 200) {
+      Navigator.pop(context);
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text("$type deleted successfully")));
+    } else {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text("Failed to delete $type")));
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: const Text("Delete Content"),
+      content: loading
+          ? const SizedBox(
+              height: 80,
+              child: Center(child: CircularProgressIndicator()),
+            )
+          : Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                /// COURSE DROPDOWN
+                DropdownButton<String>(
+                  value: selectedCourseId,
+                  hint: const Text("Select Course"),
+                  items: courses.map<DropdownMenuItem<String>>((course) {
+                    return DropdownMenuItem<String>(
+                      value: course["course_id"].toString(),
+                      child: Text(course["title"].toString()),
+                    );
+                  }).toList(),
+                  onChanged: (value) {
+                    setState(() {
+                      selectedCourseId = value;
+                    });
+                  },
+                ),
+
+                const SizedBox(height: 12),
+
+                /// BOOK DROPDOWN
+                DropdownButton<String>(
+                  value: selectedBookId,
+                  hint: const Text("Select Book"),
+                  items: books.map<DropdownMenuItem<String>>((book) {
+                    return DropdownMenuItem<String>(
+                      value: book["book_id"].toString(),
+                      child: Text(book["title"].toString()),
+                    );
+                  }).toList(),
+                  onChanged: (value) {
+                    setState(() {
+                      selectedBookId = value;
+                    });
+                  },
+                ),
+              ],
+            ),
+
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text("Cancel"),
+        ),
+        ElevatedButton(
+          style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+          onPressed: () {
+            if (selectedCourseId != null) {
+              deleteItem(type: "course", id: selectedCourseId!);
+            } else if (selectedBookId != null) {
+              deleteItem(type: "book", id: selectedBookId!);
+            }
+          },
+          child: const Text("Delete"),
+        ),
+      ],
     );
   }
 }

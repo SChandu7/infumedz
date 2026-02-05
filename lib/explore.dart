@@ -5,6 +5,7 @@ import 'package:http/http.dart' as http;
 import 'package:image_picker/image_picker.dart';
 import 'package:flutter_file_dialog/flutter_file_dialog.dart';
 import 'package:flutter/services.dart';
+import 'package:infumedz/loginsignup.dart';
 import 'dart:async';
 import 'package:infumedz/views.dart';
 import 'package:razorpay_flutter/razorpay_flutter.dart';
@@ -13,6 +14,7 @@ import 'admin.dart';
 import 'cart.dart';
 import 'main.dart';
 import 'payment.dart';
+import 'loginsignup.dart';
 
 class MedicalStoreScreen extends StatefulWidget {
   final String initialCategory; // 👈 NEW
@@ -394,6 +396,7 @@ class _MedicalStoreScreenState extends State<MedicalStoreScreen> {
                         builder: (_) => CourseDetailScreen(
                           data: item,
                           option: selectedType,
+                          isLocked: false,
                         ),
                       ),
                     );
@@ -644,9 +647,16 @@ class CourseDetailScreen extends StatefulWidget {
   final Map<String, dynamic> data;
   List<Map<String, dynamic>> videos = [];
   final String option;
+  final bool isLocked;
+
   // ✅ FIX
 
-  CourseDetailScreen({super.key, required this.data, required this.option});
+  CourseDetailScreen({
+    super.key,
+    required this.data,
+    required this.option,
+    required this.isLocked,
+  });
 
   @override
   State<CourseDetailScreen> createState() => _CourseDetailScreenState();
@@ -671,6 +681,20 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
 
     if (videoId == null || videoId.isEmpty) return "";
     return "https://img.youtube.com/vi/$videoId/hqdefault.jpg";
+  }
+
+  Future<void> buyCourse() async {
+    final userId = await UserSession.getUserId();
+    print("-===========---------------======================-----------------");
+    print(userId);
+    print(widget.data["id"]);
+
+    if (userId == null) {
+      Navigator.push(context, MaterialPageRoute(builder: (_) => LoginPage()));
+      return;
+    }
+
+    startPayment();
   }
 
   @override
@@ -712,35 +736,40 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
   // STEP 1: CREATE ORDER
   // =====================================================
   Future<void> startPayment() async {
-    setState(() {
-      _loading = true;
-      _status = "Creating order…";
-    });
-
-    try {
-      final res = await http.post(
-        Uri.parse("https://api.chandus7.in/api/infumedz/payment/create-order/"),
-        headers: {"Content-Type": "application/json"},
-        body: jsonEncode({
-          "user": "2",
-          "course_id": widget.data["id"],
-        }), // ₹5 (recommended)
-      );
-
-      if (res.statusCode != 200) {
-        throw "Order creation failed";
-      }
-
-      final data = jsonDecode(res.body);
-      _orderId = data["order_id"];
-
-      _openRazorpay(data["key"]);
-    } catch (e) {
-      setState(() {
-        _loading = false;
-        _status = "Failed to start payment";
-      });
+    final userId = await UserSession.getUserId();
+    if (userId == null) {
+      Navigator.push(context, MaterialPageRoute(builder: (_) => LoginPage()));
+      return;
     }
+
+    final isBook = widget.option == "Books";
+
+    final url = isBook
+        ? "https://api.chandus7.in/api/infumedz/payment/create-book-order/"
+        : "https://api.chandus7.in/api/infumedz/payment/create-course-order/";
+
+    final body = isBook
+        ? {"user": userId, "book_id": widget.data["id"]}
+        : {"user": userId, "course_id": widget.data["id"]};
+
+    final res = await http.post(
+      Uri.parse(url),
+      headers: {"Content-Type": "application/json"},
+      body: jsonEncode(body),
+    );
+
+    if (res.statusCode != 200) {
+      final err = jsonDecode(res.body);
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(err["error"] ?? "Payment failed")));
+      return;
+    }
+
+    final data = jsonDecode(res.body);
+    _orderId = data["order_id"];
+
+    _openRazorpay(data["key"]);
   }
 
   // =====================================================
@@ -845,13 +874,7 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
             /// 🛒 Add to Cart
             Expanded(
               child: ElevatedButton(
-                onPressed: () {
-                  startPayment();
-
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text("Added to cart")),
-                  );
-                },
+                onPressed: startPayment,
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color(0xFF0E5FD8),
                   padding: const EdgeInsets.symmetric(vertical: 14),
@@ -1092,7 +1115,7 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
                     ),
                   ),
                   if (widget.videos.isNotEmpty) ...[
-                    const SizedBox(height: 24),
+                    const SizedBox(height: 4),
                     const Text(
                       "Course content",
                       style: TextStyle(
@@ -1100,7 +1123,7 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
                         fontWeight: FontWeight.w700,
                       ),
                     ),
-                    const SizedBox(height: 10),
+                    const SizedBox(height: 2),
 
                     ListView.separated(
                       shrinkWrap: true,

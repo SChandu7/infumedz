@@ -67,29 +67,248 @@ class _MainShellState extends State<MainShell> {
     HomePage(),
     MedicalStoreScreen(),
     LibraryPage(),
-
     AdminHomeScreen(),
   ];
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      extendBody: true,
+
       body: screens[index],
-      bottomNavigationBar: NavigationBar(
-        selectedIndex: index,
-        onDestinationSelected: (i) => setState(() => index = i),
-        destinations: const [
-          NavigationDestination(icon: Icon(Icons.home), label: 'Home'),
-          NavigationDestination(
-            icon: Icon(Icons.play_circle),
-            label: 'Explore',
+
+      // ✅ FAB ONLY FOR ADMIN TAB
+      floatingActionButton: index == 3 ? AdminExpandableFab() : null,
+
+      floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
+
+      bottomNavigationBar: AnimatedBottomNav(
+        currentIndex: index,
+        onTap: (i) => setState(() => index = i),
+      ),
+    );
+  }
+}
+
+class AdminExpandableFab extends StatefulWidget {
+  @override
+  State<AdminExpandableFab> createState() => _AdminExpandableFabState();
+}
+
+class _AdminExpandableFabState extends State<AdminExpandableFab> {
+  bool fabOpen = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return Stack(
+      alignment: Alignment.bottomRight,
+      children: [
+        if (fabOpen)
+          GestureDetector(
+            onTap: () => setState(() => fabOpen = false),
+            child: Container(
+              width: double.infinity,
+              height: double.infinity,
+              color: Colors.transparent,
+            ),
           ),
-          NavigationDestination(
-            icon: Icon(Icons.shopping_cart),
-            label: 'Library',
+
+        Positioned(
+          bottom: 80,
+          right: 16,
+          child: Column(
+            children: [
+              if (fabOpen) _fabOption(Icons.add, "Add Courses"),
+              if (fabOpen) _fabOption(Icons.picture_as_pdf, "Add Books"),
+
+              if (fabOpen)
+                _fabOption(Icons.published_with_changes, "Update Banner"),
+            ],
           ),
-          NavigationDestination(icon: Icon(Icons.person), label: 'Admin'),
+        ),
+
+        FloatingActionButton(
+          backgroundColor: const Color(0xFF0E5FD8),
+          onPressed: () => setState(() => fabOpen = !fabOpen),
+          child: AnimatedRotation(
+            turns: fabOpen ? 0.125 : 0,
+            duration: const Duration(milliseconds: 200),
+            child: const Icon(Icons.add),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _fabOption(IconData icon, String label) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: FloatingActionButton.extended(
+        heroTag: label,
+        backgroundColor: Colors.white,
+        onPressed: () {
+          setState(() => fabOpen = false);
+
+          if (label == "Add Courses") {
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const AdminCourseFlow()),
+            );
+          } else if (label == "Add Books") {
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const AdminBookFlow()),
+            );
+          } else if (label == "Delete Content") {
+            showDialog(
+              context: context,
+              builder: (_) => const AdminDeleteDialog(),
+            );
+          } else {
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const AdminBannerScreen()),
+            );
+          }
+        },
+        icon: Icon(icon, color: const Color(0xFF0E5FD8)),
+        label: Text(
+          label,
+          style: const TextStyle(
+            color: Color(0xFF0E5FD8),
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class AnimatedBottomNav extends StatelessWidget {
+  final int currentIndex;
+  final ValueChanged<int> onTap;
+
+  const AnimatedBottomNav({
+    super.key,
+    required this.currentIndex,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.fromLTRB(16, 2, 16, 12),
+      padding: const EdgeInsets.symmetric(vertical: 10),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(24),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.12),
+            blurRadius: 18,
+            offset: const Offset(0, 6),
+          ),
         ],
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceAround,
+        children: [
+          _NavItem(
+            icon: Icons.home_rounded,
+            label: "Home",
+            index: 0,
+            currentIndex: currentIndex,
+            onTap: onTap,
+          ),
+          _NavItem(
+            icon: Icons.manage_search,
+            label: "Explore",
+            index: 1,
+            currentIndex: currentIndex,
+            onTap: onTap,
+          ),
+          _NavItem(
+            icon: Icons.my_library_books_sharp,
+            label: "Library",
+            index: 2,
+            currentIndex: currentIndex,
+            onTap: onTap,
+          ),
+          _NavItem(
+            icon: Icons.admin_panel_settings_rounded,
+            label: "Admin",
+            index: 3,
+            currentIndex: currentIndex,
+            onTap: onTap,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _NavItem extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final int index;
+  final int currentIndex;
+  final ValueChanged<int> onTap;
+
+  const _NavItem({
+    required this.icon,
+    required this.label,
+    required this.index,
+    required this.currentIndex,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final bool isActive = index == currentIndex;
+
+    return GestureDetector(
+      onTap: () => onTap(index),
+      behavior: HitTestBehavior.opaque,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 300),
+        curve: Curves.easeOutBack,
+        padding: EdgeInsets.symmetric(
+          horizontal: isActive ? 18 : 12,
+          vertical: 8,
+        ),
+        decoration: BoxDecoration(
+          color: isActive
+              ? const Color(0xFF0E5FD8).withOpacity(0.12)
+              : Colors.transparent,
+          borderRadius: BorderRadius.circular(18),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            AnimatedScale(
+              scale: isActive ? 1.2 : 1.0,
+              duration: const Duration(milliseconds: 250),
+              child: Icon(
+                icon,
+                size: 26,
+                color: isActive ? const Color(0xFF0E5FD8) : Colors.grey,
+              ),
+            ),
+            const SizedBox(height: 4),
+            AnimatedOpacity(
+              opacity: isActive ? 1 : 0,
+              duration: const Duration(milliseconds: 200),
+              child: Text(
+                label,
+                style: const TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w600,
+                  color: Color(0xFF0E5FD8),
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -862,7 +1081,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                       Icon(
                         Icons.arrow_forward_ios,
                         size: 16,
-                        color: Colors.white,
+                        color: Colors.black45,
                       ),
                     ],
                   ),
@@ -1014,7 +1233,8 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                   MaterialPageRoute(
                     builder: (_) => CourseDetailScreen(
                       data: course, // ✅ FULL COURSE MAP
-                      option: "course", // 👈 identify type
+                      option: "course",
+                      isLocked: true, // 👈 identify type
                     ),
                   ),
                 );
@@ -1130,6 +1350,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                     builder: (_) => CourseDetailScreen(
                       data: book, // ✅ FULL BOOK MAP
                       option: "book",
+                      isLocked: true,
                     ),
                   ),
                 );

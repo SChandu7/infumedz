@@ -1,14 +1,50 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
+import 'package:infumedz/main.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
-import 'package:infumedz/views.dart';
-import 'admin.dart';
-import 'cart.dart';
 import 'explore.dart';
-import 'thesis.dart';
-import 'main.dart';
+import 'views.dart';
 
-class LibraryPage extends StatelessWidget {
+class LibraryPage extends StatefulWidget {
   const LibraryPage({super.key});
+
+  @override
+  State<LibraryPage> createState() => _LibraryPageState();
+}
+
+class _LibraryPageState extends State<LibraryPage> {
+  late Future<Map<String, List<Map<String, dynamic>>>> _future;
+
+  @override
+  void initState() {
+    super.initState();
+    _future = fetchLibrary(); // ✅ FIX (THIS WAS MISSING)
+  }
+
+  Future<Map<String, List<Map<String, dynamic>>>> fetchLibrary() async {
+    final userId = await SessionManager.getUserId();
+
+    if (userId == null) {
+      return {"courses": [], "books": []};
+    }
+
+    final res = await http.get(
+      Uri.parse("https://api.chandus7.in/api/infumedz/library/$userId/"),
+    );
+
+    if (res.statusCode != 200) {
+      return {"courses": [], "books": []};
+    }
+
+    final body = jsonDecode(res.body);
+
+    return {
+      "courses": List<Map<String, dynamic>>.from(body["courses"] ?? []),
+      "books": List<Map<String, dynamic>>.from(body["books"] ?? []),
+    };
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -17,71 +53,90 @@ class LibraryPage extends StatelessWidget {
       appBar: AppBar(
         title: const Text(
           "My Library",
-          style: TextStyle(
-            fontWeight: FontWeight.w700,
-            color: Color(0xFF1F3C68),
-          ),
+          style: TextStyle(fontWeight: FontWeight.w700),
         ),
         backgroundColor: Colors.white,
         elevation: 0.5,
       ),
-      body: ListView(
-        padding: const EdgeInsets.all(16),
-        children: [
-          /// 📊 OVERVIEW
-          _LibraryStats(),
+      body: FutureBuilder<Map<String, List<Map<String, dynamic>>>>(
+        future: _future,
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Center(child: CircularProgressIndicator());
+          }
 
-          const SizedBox(height: 20),
+          if (snapshot.hasError) {
+            return const Center(child: Text("Failed to load library"));
+          }
 
-          /// 🎓 COURSES
-          const Text(
-            "My Courses",
-            style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700),
-          ),
-          const SizedBox(height: 12),
+          final courses = snapshot.data?["courses"] ?? [];
+          final books = snapshot.data?["books"] ?? [];
 
-          ...libraryCourses.map((course) => _LibraryCourseCard(course: course)),
+          if (courses.isEmpty && books.isEmpty) {
+            return const _EmptyLibrary();
+          }
 
-          const SizedBox(height: 28),
+          return ListView(
+            padding: const EdgeInsets.all(16),
+            children: [
+              _LibraryStats(courses: courses.length, books: books.length),
 
-          /// 📄 PDFs
-          const Text(
-            "My Notes & PDFs",
-            style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700),
-          ),
-          const SizedBox(height: 12),
+              if (courses.isNotEmpty) ...[
+                const SizedBox(height: 20),
+                const Text(
+                  "My Courses",
+                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700),
+                ),
+                const SizedBox(height: 12),
+                ...courses.map((c) => _LibraryCourseCard(course: c)),
+              ],
 
-          ...libraryPdfs.map((pdf) => _LibraryPdfCard(pdf: pdf)),
-        ],
+              if (books.isNotEmpty) ...[
+                const SizedBox(height: 20),
+                const Text(
+                  "My Books",
+                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700),
+                ),
+                const SizedBox(height: 12),
+                ...books.map((b) => _LibraryPdfCard(pdf: b)),
+                ElevatedButton(
+                  onPressed: () async {
+                    await SessionManager.logout();
+                    if (mounted) {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (_) => const InfuMedzApp()),
+                      );
+                    }
+                  },
+                  child: const Text("Logout"),
+                ),
+              ],
+            ],
+          );
+        },
       ),
     );
   }
 }
 
+/* ---------------- STATS ---------------- */
+
 class _LibraryStats extends StatelessWidget {
+  final int courses;
+  final int books;
+
+  const _LibraryStats({required this.courses, required this.books});
+
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(14),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 10,
-            offset: const Offset(0, 5),
-          ),
-        ],
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: const [
-          _StatItem(title: "Courses", value: "2"),
-          _StatItem(title: "PDFs", value: "1"),
-          _StatItem(title: "Completed", value: "1"),
-        ],
-      ),
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceAround,
+      children: [
+        _StatItem(title: "Courses", value: courses.toString()),
+        _StatItem(title: "Books", value: books.toString()),
+        const _StatItem(title: "Completed", value: "—"),
+      ],
     );
   }
 }
@@ -114,109 +169,66 @@ class _StatItem extends StatelessWidget {
   }
 }
 
+/* ---------------- COURSE CARD ---------------- */
+
 class _LibraryCourseCard extends StatelessWidget {
   final Map<String, dynamic> course;
-
   const _LibraryCourseCard({required this.course});
 
   @override
   Widget build(BuildContext context) {
-    final progress = course["progress"];
-
     return Container(
       margin: const EdgeInsets.only(bottom: 14),
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(14),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.04),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
       ),
       child: Row(
         children: [
-          /// THUMBNAIL
           ClipRRect(
             borderRadius: BorderRadius.circular(10),
-            child: Image.asset(
-              course["image"],
+            child: Image.network(
+              course["thumbnail"] ?? "",
               width: 90,
               height: 70,
               fit: BoxFit.cover,
-            ),
-          ),
-
-          const SizedBox(width: 12),
-
-          /// DETAILS
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  course["title"],
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w700,
+              errorBuilder: (context, error, stackTrace) {
+                return Container(
+                  width: 90,
+                  height: 70,
+                  color: Colors.grey.shade300,
+                  child: const Icon(
+                    Icons.image_not_supported,
+                    color: Colors.grey,
+                    size: 30,
                   ),
-                ),
-                const SizedBox(height: 6),
-
-                /// PROGRESS BAR
-                LinearProgressIndicator(
-                  value: progress / 100,
-                  minHeight: 6,
-                  borderRadius: BorderRadius.circular(6),
-                  backgroundColor: Colors.grey.shade200,
-                  color: const Color(0xFF0E5FD8),
-                ),
-
-                const SizedBox(height: 6),
-
-                Text(
-                  "$progress% completed ",
-                  style: const TextStyle(fontSize: 12, color: Colors.black54),
-                ),
-              ],
+                );
+              },
             ),
           ),
-
-          const SizedBox(width: 8),
-
-          /// RESUME
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              course["title"],
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(fontWeight: FontWeight.w700),
+            ),
+          ),
           ElevatedButton(
             onPressed: () {
               Navigator.push(
                 context,
                 MaterialPageRoute(
-                  builder: (_) => VideoPlayerScreen(
-                    url:
-                        "https://djangotestcase.s3.ap-south-1.amazonaws.com/medical/videos/54cfac91-079b-481d-8d8c-9916924954f0_1000205769.mp4",
-                    title: "",
+                  builder: (_) => CourseDetailLoaderScreen(
+                    id: course["course_id"],
+                    type: "course",
                   ),
                 ),
               );
             },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF0E5FD8),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(10),
-              ),
-            ),
-            child: const Text(
-              "Resume",
-              style: TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.w600,
-                color: Colors.white,
-              ),
-            ),
+            child: const Text("Open"),
           ),
         ],
       ),
@@ -224,70 +236,72 @@ class _LibraryCourseCard extends StatelessWidget {
   }
 }
 
+/* ---------------- PDF CARD ---------------- */
+
 class _LibraryPdfCard extends StatelessWidget {
   final Map<String, dynamic> pdf;
-
   const _LibraryPdfCard({required this.pdf});
 
   @override
   Widget build(BuildContext context) {
     return Container(
       margin: const EdgeInsets.only(bottom: 14),
-      padding: const EdgeInsets.all(14),
+      padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(14),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.04),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
       ),
       child: Row(
         children: [
-          const Icon(Icons.picture_as_pdf, size: 36, color: Colors.red),
-
-          const SizedBox(width: 12),
-
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  pdf["title"],
-                  style: const TextStyle(
-                    fontWeight: FontWeight.w600,
-                    fontSize: 14,
+          /// 📘 THUMBNAIL
+          ClipRRect(
+            borderRadius: BorderRadius.circular(10),
+            child: Image.network(
+              pdf["thumbnail"] ?? "",
+              width: 90,
+              height: 70,
+              fit: BoxFit.cover,
+              errorBuilder: (_, __, ___) {
+                return Container(
+                  width: 90,
+                  height: 70,
+                  color: Colors.red.withOpacity(0.1),
+                  child: const Icon(
+                    Icons.picture_as_pdf,
+                    color: Colors.red,
+                    size: 32,
                   ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  pdf["meta"],
-                  style: const TextStyle(fontSize: 12, color: Colors.black54),
-                ),
-              ],
+                );
+              },
             ),
           ),
 
-          TextButton(
+          const SizedBox(width: 12),
+
+          /// 📄 TITLE
+          Expanded(
+            child: Text(
+              pdf["title"] ?? "Untitled Book",
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
+            ),
+          ),
+
+          /// 🔓 OPEN
+          ElevatedButton(
             onPressed: () {
               Navigator.push(
                 context,
                 MaterialPageRoute(
-                  builder: (_) => PdfScreen(
-                    pdfUrl:
-                        "https://djangotestcase.s3.ap-south-1.amazonaws.com/medical/pdfs/54cfac91-079b-481d-8d8c-9916924954f0_CASTOR.pdf",
-                    title: pdf["title"],
+                  builder: (_) => CourseDetailLoaderScreen(
+                    id: pdf["book_id"],
+                    type: "book",
                   ),
                 ),
               );
             },
-            child: const Text(
-              "Open",
-              style: TextStyle(fontWeight: FontWeight.bold),
-            ),
+            child: const Text("Open"),
           ),
         ],
       ),
@@ -295,26 +309,119 @@ class _LibraryPdfCard extends StatelessWidget {
   }
 }
 
-final libraryCourses = [
-  {
-    "title": "MBBS Anatomy – Clinical Approach",
-    "image": "assets/course1.jpg",
-    "progress": 30,
-    "completed": 27,
-    "total": 90,
-  },
-  {
-    "title": "MD Medicine – Clinical Q&A Series",
-    "image": "assets/course2.jpg",
-    "progress": 10,
-    "completed": 15,
-    "total": 150,
-  },
-];
+/* ---------------- EMPTY ---------------- */
 
-final libraryPdfs = [
-  {
-    "title": "General Medicine – Rapid Revision Notes",
-    "meta": "780 Pages • PDF",
-  },
-];
+class _EmptyLibrary extends StatelessWidget {
+  const _EmptyLibrary();
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Icon(Icons.lock_outline, size: 64, color: Colors.grey),
+          const SizedBox(height: 12),
+          const Text("No purchases yet"),
+          const SizedBox(height: 16),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const MedicalStoreScreen()),
+              );
+            },
+            child: const Text("Browse Courses"),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/* ---------------- SESSION ---------------- */
+
+class SessionManager {
+  static const _keyUserId = "user_id";
+
+  static Future<void> saveUserId(String userId) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_keyUserId, userId);
+  }
+
+  static Future<String?> getUserId() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString(_keyUserId);
+  }
+
+  static Future<void> logout() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove(_keyUserId);
+  }
+}
+
+class CourseDetailLoaderScreen extends StatefulWidget {
+  final String id;
+  final String type; // "course" | "book"
+
+  const CourseDetailLoaderScreen({
+    super.key,
+    required this.id,
+    required this.type,
+  });
+
+  @override
+  State<CourseDetailLoaderScreen> createState() =>
+      _CourseDetailLoaderScreenState();
+}
+
+class _CourseDetailLoaderScreenState extends State<CourseDetailLoaderScreen> {
+  late Future<Map<String, dynamic>> _future;
+
+  @override
+  void initState() {
+    super.initState();
+    _future = fetchDetails();
+  }
+
+  Future<Map<String, dynamic>> fetchDetails() async {
+    final url = widget.type == "course"
+        ? "https://api.chandus7.in/api/infumedz/courses/${widget.id}/"
+        : "https://api.chandus7.in/api/infumedz/books/${widget.id}/";
+
+    final res = await http.get(Uri.parse(url));
+
+    if (res.statusCode != 200) {
+      throw Exception("Failed to load details");
+    }
+
+    return jsonDecode(res.body);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return FutureBuilder<Map<String, dynamic>>(
+      future: _future,
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Scaffold(
+            body: Center(child: CircularProgressIndicator()),
+          );
+        }
+
+        if (snapshot.hasError || !snapshot.hasData) {
+          print(snapshot.error);
+          return Scaffold(
+            body: Center(child: Text("Failed to load content $snapshot.error")),
+          );
+        }
+
+        return CourseDetailScreen(
+          data: snapshot.data!,
+          option: widget.type == "book" ? "Books" : "Courses",
+          isLocked: false,
+        );
+      },
+    );
+  }
+}
