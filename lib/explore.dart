@@ -21,7 +21,7 @@ class MedicalStoreScreen extends StatefulWidget {
 
   const MedicalStoreScreen({
     super.key,
-    this.initialCategory = "MBBS", // 👈 default
+    this.initialCategory = "All", // 👈 default
   });
 
   @override
@@ -39,7 +39,7 @@ class _MedicalStoreScreenState extends State<MedicalStoreScreen> {
 
   // selection state
   int? selectedCategoryId;
-  String selectedCategoryName = "MBBS";
+  String selectedCategoryName = "All";
 
   // loading states
   bool loadingCategories = true;
@@ -77,14 +77,18 @@ class _MedicalStoreScreenState extends State<MedicalStoreScreen> {
       setState(() {
         categories = data;
 
-        // auto select initial category
-        final match = data.firstWhere(
-          (c) => c["name"] == selectedCategoryName,
-          orElse: () => data.first,
-        );
+        // ✅ IF ALL → DO NOT SELECT ANY CATEGORY
+        if (selectedCategoryName == "All") {
+          selectedCategoryId = null;
+        } else {
+          final match = data.firstWhere(
+            (c) => c["name"] == selectedCategoryName,
+            orElse: () => data.first,
+          );
+          selectedCategoryId = match["id"];
+          selectedCategoryName = match["name"];
+        }
 
-        selectedCategoryId = match["id"];
-        selectedCategoryName = match["name"];
         loadingCategories = false;
       });
     }
@@ -445,6 +449,7 @@ class _MedicalStoreScreenState extends State<MedicalStoreScreen> {
               },
             ),
           ),
+          SizedBox(height: 65),
         ],
       ),
     );
@@ -475,7 +480,7 @@ class _CourseListCard extends StatelessWidget {
         onTap: onTap,
         borderRadius: BorderRadius.circular(14),
         child: Container(
-          margin: const EdgeInsets.only(bottom: 14),
+          margin: const EdgeInsets.only(bottom: 26, left: 10, right: 10),
           decoration: BoxDecoration(
             color: Colors.white,
             borderRadius: BorderRadius.circular(4),
@@ -487,6 +492,7 @@ class _CourseListCard extends StatelessWidget {
               ),
             ],
           ),
+
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -732,8 +738,10 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
     _razorpay.on(Razorpay.EVENT_PAYMENT_SUCCESS, _onSuccess);
     _razorpay.on(Razorpay.EVENT_PAYMENT_ERROR, _onError);
     print(widget.data);
-    print(("00000000000000000000000000000000000000000000000000000000000"));
-    print(widget.data["videos"]);
+    print(
+      ("00000000000000000000000000000000000000000000000000000000000-----------------------"),
+    );
+    print(widget.data);
     // TODO: implement initState
     if (widget.option == "Books") {
       widget.videos = List<Map<String, dynamic>>.from(
@@ -815,7 +823,10 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
       'description': 'UPI / Card Payment',
       'timeout': 180,
       'retry': {'enabled': false},
-      'prefill': {'contact': '9949597079', 'email': 'kingchandus143@gmail.com'},
+      'prefill': {
+        'contact': '${UserSession.getUserphonenumber()}',
+        'email': '${UserSession.getUseremail()}',
+      },
     });
   }
 
@@ -911,10 +922,11 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
                   ),
                 ),
                 child: Text(
-                  "Add to Cart • ${widget.data["price"] ?? "0"}",
+                  "Buy• ${widget.data["price"] ?? "0"}",
                   style: const TextStyle(
                     fontSize: 15,
                     fontWeight: FontWeight.w700,
+                    color: Colors.white,
                   ),
                 ),
               ),
@@ -956,9 +968,8 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
                     Builder(
                       builder: (context) {
                         if (widget.videos.isNotEmpty) {
-                          final video = widget.videos.first;
                           final String videoUrl =
-                              video["video_url"]?.toString() ?? "";
+                              widget.data["video_url"]?.toString() ?? "";
 
                           if (videoUrl.isEmpty) {
                             return const Center(
@@ -971,12 +982,12 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
 
                           return InlineVideoPlayer(
                             url: videoUrl,
-                            title: video["title"] ?? "",
+                            title: widget.data["title"] ?? "",
                           );
                         } else {
                           return const Center(
                             child: Text(
-                              "No videos available",
+                              "No Data available",
                               style: TextStyle(color: Colors.white),
                             ),
                           );
@@ -1011,6 +1022,8 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
                               );
                               return;
                             }
+                            print("------------44444444444----------");
+                            print(widget.data["pdf_url"]);
 
                             Navigator.push(
                               context,
@@ -1166,7 +1179,10 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
                         if (isBook) {
                           // 📄 BOOK / PDF
                           final pdfUrl = item["pdf_url"];
-
+                          print(pdfUrl);
+                          print(0612);
+                          // ❌ WRONG
+                          print(pdfUrl.replaceAll("%20", " "));
                           return YoutubeStyleCourseCard3(
                             title: title,
                             views: "Document ${index + 1}",
@@ -1178,8 +1194,10 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
                               Navigator.push(
                                 context,
                                 MaterialPageRoute(
-                                  builder: (_) =>
-                                      PdfScreen(pdfUrl: pdfUrl, title: title),
+                                  builder: (_) => PdfScreen(
+                                    pdfUrl: item["pdf_url"],
+                                    title: title,
+                                  ),
                                 ),
                               );
                             },
@@ -1443,6 +1461,7 @@ class YoutubeStyleCourseCard3 extends StatelessWidget {
     required this.onTap,
     required this.isBook,
   });
+
   Widget _fallbackThumb() {
     return Container(
       width: 140,
@@ -1460,9 +1479,9 @@ class YoutubeStyleCourseCard3 extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return InkWell(
-      onTap: onTap, // ✅ SINGLE SOURCE OF TRUTH
+      onTap: onTap, // ✅ whole row tap
       child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 8),
+        padding: const EdgeInsets.symmetric(vertical: 10),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -1478,7 +1497,6 @@ class YoutubeStyleCourseCard3 extends StatelessWidget {
                           width: 140,
                           height: 80,
                           fit: BoxFit.cover,
-
                           errorBuilder: (_, __, ___) => _fallbackThumb(),
                         )
                       : _fallbackThumb(),
@@ -1499,7 +1517,7 @@ class YoutubeStyleCourseCard3 extends StatelessWidget {
 
             const SizedBox(width: 12),
 
-            // 📄 Details
+            // 📄 Title + Meta
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -1521,6 +1539,26 @@ class YoutubeStyleCourseCard3 extends StatelessWidget {
                   ),
                 ],
               ),
+            ),
+
+            // ⋮ YOUTUBE STYLE MENU
+            PopupMenuButton<String>(
+              padding: EdgeInsets.zero,
+              icon: const Icon(
+                Icons.more_vert,
+                size: 20,
+                color: Colors.black54,
+              ),
+              onSelected: (value) {
+                if (value == "share") {
+                  // TODO: share
+                } else if (value == "save") {
+                  // TODO: save
+                } else if (value == "report") {
+                  // TODO: report
+                }
+              },
+              itemBuilder: (context) => [],
             ),
           ],
         ),

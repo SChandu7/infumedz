@@ -5,6 +5,7 @@ import 'package:http/http.dart' as http;
 import 'package:image_picker/image_picker.dart';
 import 'package:flutter_file_dialog/flutter_file_dialog.dart';
 import 'package:flutter/services.dart';
+import 'package:infumedz/aboutus.dart';
 import 'package:infumedz/loginsignup.dart';
 import 'package:infumedz/user.dart';
 import 'dart:async';
@@ -15,6 +16,7 @@ import 'cart.dart';
 import 'explore.dart';
 import 'thesis.dart';
 import 'library.dart';
+import "splash.dart";
 
 class ApiConfig {
   static const base = "http://13.203.219.206:8000";
@@ -28,12 +30,28 @@ class ApiConfig {
   static const createBook = "$base/api/infumedz/book/create/";
   static const addBookPdf = "$base/api/infumedz/book/pdf/add/";
   static const presignedVideoUpload = "$base/upload/video/presigned/";
+  static const presignedPdfUpload = "$base/upload/book/presigned/";
 
   static const uploadThumbnail =
-      "http://13.203.219.206:8000/api/infumedz/upload/course-thumbnail/";
+      "http://13.203.219.206:8000/api/infumedz/upload/cofassurse-thumbnail/";
 }
 
 void main() {
+  WidgetsFlutterBinding.ensureInitialized();
+
+  SystemChrome.setSystemUIOverlayStyle(
+    const SystemUiOverlayStyle(
+      systemNavigationBarColor: Color.fromARGB(
+        255,
+        130,
+        17,
+        17,
+      ), // ✅ background
+      systemNavigationBarIconBrightness: Brightness.dark, // ✅ icons
+      statusBarColor: Colors.transparent,
+      statusBarIconBrightness: Brightness.dark,
+    ),
+  );
   runApp(const InfuMedzApp());
 }
 
@@ -50,7 +68,7 @@ class InfuMedzApp extends StatelessWidget {
         colorSchemeSeed: Colors.indigo,
         scaffoldBackgroundColor: const Color(0xFFF6F7FB),
       ),
-      home: const MainShell(),
+      home: const OnboardingScreen(),
     );
   }
 }
@@ -65,16 +83,70 @@ class MainShell extends StatefulWidget {
 class _MainShellState extends State<MainShell> {
   int index = 0;
   DateTime? _lastBackPressed;
+  String? _phone;
+  String? _email;
+  bool _isAdmin = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadSession();
+  }
+
+  Future<void> _loadSession() async {
+    final phone = await UserSession.getUserphonenumber();
+    final email = await UserSession.getUseremail();
+
+    setState(() {
+      _phone = phone;
+      _email = email;
+
+      _isAdmin =
+          phone == "9949597079" ||
+          phone == "9167459168" ||
+          phone == "9167459138" ||
+          email == "chandrasekharsuragani532@gmail.com";
+    });
+  }
 
   final screens = [
     const HomePage(),
     const MedicalStoreScreen(),
     const LibraryPage(),
-    (UserSession.getUserphonenumber() == "9949597079" ||
-            UserSession.getUserphonenumber() == "9167459138" ||
-            UserSession.getUserphonenumber() == "0000000000")
-        ? AdminHomeScreen()
-        : UserHomeScreen(),
+
+    /// 👇 PROFILE / ADMIN / LOGIN RESOLUTION
+    FutureBuilder<List<String?>>(
+      future: Future.wait([
+        UserSession.getUserphonenumber(),
+        UserSession.getUserId(),
+      ]),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Scaffold(
+            body: Center(child: CircularProgressIndicator()),
+          );
+        }
+
+        final phone = snapshot.data?[0];
+        final userId = snapshot.data?[1];
+
+        /// 🔐 ADMIN
+        if (phone == "9949597079" ||
+            phone == "9167459138" ||
+            phone == "9167459168" ||
+            phone == "0000000000") {
+          return const AdminHomeScreen();
+        }
+
+        /// 👤 USER LOGGED IN
+        if (userId != null && userId.isNotEmpty) {
+          return const UserHomeScreen();
+        }
+
+        /// 🚪 NOT LOGGED IN
+        return const LoginPage();
+      },
+    ),
   ];
 
   Future<bool> _onBackPressed() async {
@@ -105,20 +177,19 @@ class _MainShellState extends State<MainShell> {
         body: screens[index],
 
         // ✅ FAB ONLY FOR ADMIN TAB
-        floatingActionButton: index == 3
-            ? (UserSession.getUserphonenumber() == "9949597079" ||
-                      UserSession.getUserphonenumber() == "9167459138" ||
-                      UserSession.getUseremail() ==
-                          "chandrasekharsuragani532@gmail.com")
-                  ? AdminExpandableFab()
-                  : null
+        floatingActionButton: index == 3 && _isAdmin
+            ? AdminExpandableFab()
             : null,
 
         floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
 
-        bottomNavigationBar: AnimatedBottomNav(
-          currentIndex: index,
-          onTap: (i) => setState(() => index = i),
+        bottomNavigationBar: SafeArea(
+          minimum: const EdgeInsets.only(bottom: 4),
+
+          child: AnimatedBottomNav(
+            currentIndex: index,
+            onTap: (i) => setState(() => index = i),
+          ),
         ),
       ),
     );
@@ -755,28 +826,6 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     );
   }
 
-  void _onSearchChanged(String query) {
-    final q = query.trim().toLowerCase();
-
-    if (q.isEmpty) {
-      setState(() {
-        filteredTitles = allTitles.take(6).toList();
-        showSearchDropdown = true;
-      });
-      return;
-    }
-
-    final results = allTitles
-        .where((title) => title.toLowerCase().contains(q))
-        .take(6)
-        .toList();
-
-    setState(() {
-      filteredTitles = results;
-      showSearchDropdown = true;
-    });
-  }
-
   Future<void> fetchBannerData() async {
     try {
       final res = await http.get(
@@ -908,6 +957,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
   @override
   Widget build(BuildContext context) {
     return SafeArea(
+      // bottom: false, // ✅ allow overlap
       child: GestureDetector(
         behavior: HitTestBehavior.translucent,
         onTap: () {
@@ -935,7 +985,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                         child: Padding(
                           padding: const EdgeInsets.all(1),
                           child: Image.asset(
-                            "assets/logo.png", // 👈 your logo
+                            "assets/logo2.png", // 👈 your logo
                             fit: BoxFit.contain,
                           ),
                         ),
@@ -1007,9 +1057,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                     IconButton(
                       icon: const Icon(Icons.tune, color: Color(0xFF0E5FD8)),
                       onPressed: () {
-                        setState(() {
-                          UserSession.logout();
-                        });
+                        setState(() {});
                       },
                     ),
                   ],
@@ -1143,8 +1191,15 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
             const SizedBox(height: 12),
 
             /// 🔹 FULL-WIDTH CATEGORY CARDS (HIGHLIGHTED)
-            Column(
+            GridView.count(
+              crossAxisCount: 2,
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              crossAxisSpacing: 12,
+              mainAxisSpacing: 12,
+              childAspectRatio: 1.6, // controls height
               children: [
+                /// 🔹 CARD 1 — Research Assistance
                 GestureDetector(
                   onTap: () {
                     Navigator.push(
@@ -1155,17 +1210,13 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                     );
                   },
                   child: Container(
-                    margin: const EdgeInsets.only(bottom: 12),
-                    padding: const EdgeInsets.all(16),
+                    padding: const EdgeInsets.all(14),
                     decoration: BoxDecoration(
                       borderRadius: BorderRadius.circular(14),
                       gradient: const LinearGradient(
                         begin: Alignment.topLeft,
                         end: Alignment.bottomRight,
-                        colors: [
-                          Color(0xFFEAF3FF), // soft medical blue
-                          Color(0xFFFFFFFF),
-                        ],
+                        colors: [Color(0xFFEAF3FF), Color(0xFFFFFFFF)],
                       ),
                       boxShadow: [
                         BoxShadow(
@@ -1175,9 +1226,69 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                         ),
                       ],
                     ),
-                    child: Row(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        /// ICON
+                        // Container(
+                        //   height: 42,
+                        //   width: 42,
+                        //   decoration: BoxDecoration(
+                        //     color: const Color(0xFF0E5FD8).withOpacity(0.12),
+                        //     borderRadius: BorderRadius.circular(12),
+                        //   ),
+                        //   child: const Icon(
+                        //     Icons.school,
+                        //     size: 22,
+                        //     color: Color(0xFF0E5FD8),
+                        //   ),
+                        // ),
+                        const Spacer(),
+
+                        const Text(
+                          "Research \n Assistance",
+                          style: TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w700,
+                            color: Color(0xFF1F3C68),
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                      ],
+                    ),
+                  ),
+                ),
+
+                /// 🔹 CARD 2 — About Page
+                GestureDetector(
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute<void>(
+                        builder: (context) => const AboutUsScreen(),
+                      ),
+                    );
+                    // TODO: Navigate to About Screen
+                  },
+                  child: Container(
+                    padding: const EdgeInsets.all(14),
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(14),
+                      gradient: const LinearGradient(
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                        colors: [Color(0xFFEAF3FF), Color(0xFFFFFFFF)],
+                      ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.15),
+                          blurRadius: 12,
+                          offset: const Offset(0, 6),
+                        ),
+                      ],
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
                         Container(
                           height: 42,
                           width: 42,
@@ -1186,44 +1297,29 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                             borderRadius: BorderRadius.circular(12),
                           ),
                           child: const Icon(
-                            Icons.school,
+                            Icons.info_outline,
                             size: 22,
                             color: Color(0xFF0E5FD8),
                           ),
                         ),
 
-                        const SizedBox(width: 14),
+                        const Spacer(),
 
-                        /// TEXT (FIXED NAME)
-                        const Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                "Thesis Assistance",
-                                style: TextStyle(
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.w700,
-                                  color: Color(0xFF1F3C68),
-                                ),
-                              ),
-                              SizedBox(height: 4),
-                              Text(
-                                "Explore Publication",
-                                style: TextStyle(
-                                  fontSize: 13,
-                                  color: Color(0xFF1F3C68),
-                                ),
-                              ),
-                            ],
+                        const Text(
+                          "About InfuMedz",
+                          style: TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w700,
+                            color: Color(0xFF1F3C68),
                           ),
                         ),
-
-                        /// ARROW
-                        Icon(
-                          Icons.arrow_forward_ios,
-                          size: 16,
-                          color: Colors.black45,
+                        const SizedBox(height: 4),
+                        const Text(
+                          "Know our mission",
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: Color(0xFF1F3C68),
+                          ),
                         ),
                       ],
                     ),
@@ -1241,6 +1337,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                 childAspectRatio: 0.99,
                 crossAxisSpacing: 12,
                 mainAxisSpacing: 12,
+                mainAxisExtent: 110, // ✅ THIS FIXES THE GAP
               ),
               itemBuilder: (context, i) {
                 return InkWell(
@@ -1375,9 +1472,9 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                     context,
                     MaterialPageRoute(
                       builder: (_) => CourseDetailScreen(
-                        data: course, // ✅ FULL COURSE MAP
+                        data: course,
                         option: "course",
-                        isLocked: true, // 👈 identify type
+                        isLocked: true,
                       ),
                     ),
                   );
@@ -1387,7 +1484,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                   child: Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // 🖼 Thumbnail
+                      // 🖼 Thumbnail (UNCHANGED)
                       ClipRRect(
                         borderRadius: BorderRadius.circular(6),
                         child: Stack(
@@ -1464,6 +1561,24 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                           ],
                         ),
                       ),
+
+                      // ⋮ YOUTUBE STYLE MENU (NEW)
+                      PopupMenuButton<String>(
+                        padding: EdgeInsets.zero,
+                        icon: const Icon(
+                          Icons.more_vert,
+                          size: 20,
+                          color: Colors.black54,
+                        ),
+                        onSelected: (value) {
+                          if (value == "save") {
+                            // save course
+                          } else if (value == "share") {
+                            // share course
+                          }
+                        },
+                        itemBuilder: (context) => const [],
+                      ),
                     ],
                   ),
                 ),
@@ -1491,7 +1606,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                     context,
                     MaterialPageRoute(
                       builder: (_) => CourseDetailScreen(
-                        data: book, // ✅ FULL BOOK MAP
+                        data: book,
                         option: "book",
                         isLocked: true,
                       ),
@@ -1503,7 +1618,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                   child: Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // 🖼 Thumbnail
+                      // 🖼 Thumbnail (UNCHANGED)
                       ClipRRect(
                         borderRadius: BorderRadius.circular(6),
                         child: Stack(
@@ -1580,11 +1695,30 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                           ],
                         ),
                       ),
+
+                      // ⋮ YOUTUBE STYLE MENU (NEW)
+                      PopupMenuButton<String>(
+                        padding: EdgeInsets.zero,
+                        icon: const Icon(
+                          Icons.more_vert,
+                          size: 20,
+                          color: Colors.black54,
+                        ),
+                        onSelected: (value) {
+                          if (value == "save") {
+                            // save book
+                          } else if (value == "share") {
+                            // share book
+                          }
+                        },
+                        itemBuilder: (context) => const [],
+                      ),
                     ],
                   ),
                 ),
               );
             }).toList(),
+            //    SizedBox(height: 100),
           ],
         ),
       ),

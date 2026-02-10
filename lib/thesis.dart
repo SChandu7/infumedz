@@ -284,11 +284,11 @@ class ThesisAssistanceScreen extends StatelessWidget {
                       children: const [
                         _ContactChip(
                           icon: Icons.call,
-                          phoneNumber: "+919167459135",
+                          phoneNumber: "+919381740718",
                         ),
                         _ContactChip(
                           icon: Icons.chat,
-                          phoneNumber: "9167459138",
+                          phoneNumber: "9381740718",
                         ),
                       ],
                     ),

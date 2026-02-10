@@ -11,6 +11,7 @@ import 'package:infumedz/views.dart';
 import 'package:infumedz/main.dart';
 import 'package:path/path.dart' as path;
 import 'package:animate_do/animate_do.dart';
+import 'loginsignup.dart';
 
 class AdminPanelHome extends StatelessWidget {
   const AdminPanelHome({super.key});
@@ -991,71 +992,62 @@ class _AddBookPdfFormState extends State<AddBookPdfForm> {
       return;
     }
 
-    setState(() => loading = true);
+    setState(() {
+      loading = true;
+    });
+    final rawName = path.basename(pdf!.path);
+    final safeName = Uri.encodeComponent(rawName);
 
-    final req = http.MultipartRequest(
-      "POST",
-      Uri.parse("${ApiConfig.base}/infumedz/upload/"),
+    /// 1️⃣ Ask backend for presigned PDF upload URL
+    final presignRes = await http.post(
+      Uri.parse(ApiConfig.presignedPdfUpload),
+      headers: {"Content-Type": "application/json"},
+      body: jsonEncode({
+        "filename": safeName,
+        "content_type": "application/pdf",
+      }),
     );
 
-    req.fields["title"] = "Human Anatomy Basics";
-    req.fields["description"] = "Medical content upload";
-    req.fields["content_type"] = "BOTH";
-
-    if (pdf != null) {
-      req.files.add(await http.MultipartFile.fromPath("pdf", pdf!.path));
-    }
-
-    final response = await req.send();
-
-    if (response.statusCode == 201) {
+    if (presignRes.statusCode != 200) {
+      setState(() => loading = false);
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(const SnackBar(content: Text("Uploaded Successfully")));
-
-      setState(() {});
-    } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Upload failed (${response.statusCode})")),
-      );
+      ).showSnackBar(SnackBar(content: Text(" $presignRes  ........")));
+      return;
     }
 
-    /// Upload to S3 (same upload API)
-    // final req = http.MultipartRequest(
-    //   "POST",
-    //   Uri.parse("${ApiConfig.base}/infumedz/upload/"),
-    // );
+    final presigned = jsonDecode(presignRes.body);
+    final uploadUrl = presigned["upload_url"];
+    final fileUrl = presigned["file_url"];
 
-    // req.fields["title"] = title.text;
-    // req.fields["content_type"] = "PDF";
-    // req.files.add(await http.MultipartFile.fromPath("pdf", pdf!.path));
+    /// 2️⃣ Upload PDF to S3
+    final bytes = await pdf!.readAsBytes();
 
-    // final res = await req.send();
-    final body = jsonDecode(await response.stream.bytesToString());
-    final pdfUrl = body["pdf_url"];
+    final s3Res = await http.put(
+      Uri.parse(uploadUrl),
+      headers: {"Content-Type": "application/pdf"},
+      body: bytes,
+    );
 
-    /// Save under book
+    if (s3Res.statusCode != 200) {
+      setState(() => loading = false);
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text("PDF upload failed")));
+      return;
+    }
+
+    /// 3️⃣ Save PDF URL under Book
     final res = await http.post(
       Uri.parse(ApiConfig.addBookPdf),
       headers: {"Content-Type": "application/json"},
       body: jsonEncode({
         "book": bookId,
         "title": title.text,
-        "pdf_url": pdfUrl,
-        "order": int.parse(order.text),
+        "pdf_url": fileUrl,
+        "order": int.tryParse(order.text) ?? 1,
       }),
     );
-    if (res.statusCode == 201) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text("Uploaded Successfully")));
-
-      setState(() {});
-    } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Upload failed (${res.statusCode})")),
-      );
-    }
 
     setState(() {
       loading = false;
@@ -1064,9 +1056,16 @@ class _AddBookPdfFormState extends State<AddBookPdfForm> {
       order.clear();
     });
 
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(const SnackBar(content: Text("✅ PDF added to book")));
+    if (res.statusCode == 201) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text("✅ PDF added successfully")));
+    } else {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text("Failed $fileUrl: ${res.body}")));
+      print(fileUrl);
+    }
   }
 
   @override
@@ -1128,501 +1127,685 @@ class AdminHomeScreen extends StatefulWidget {
   State<AdminHomeScreen> createState() => _AdminHomeScreenState();
 }
 
+class _AppFooter extends StatelessWidget {
+  const _AppFooter();
+
+  void _showLogoutDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (_) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+        title: const Text(
+          "Logout",
+          style: TextStyle(fontWeight: FontWeight.w700),
+        ),
+        content: const Text("Are you sure you want to logout from InfuMedz?"),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text("Cancel"),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.redAccent,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
+            onPressed: () async {
+              await UserSession.logout();
+
+              Navigator.pop(context);
+              Navigator.pushAndRemoveUntil(
+                context,
+                MaterialPageRoute(builder: (_) => MainShell()),
+                (_) => false,
+              );
+            },
+            child: const Text("Logout"),
+          ),
+        ],
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.fromLTRB(20, 26, 20, 22),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(18),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.04),
+            blurRadius: 14,
+            offset: const Offset(0, 6),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          /// APP NAME
+          Center(
+            child: const Text(
+              "InfuMedz",
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
+            ),
+          ),
+          const SizedBox(height: 6),
+
+          /// QUICK LINKS
+          Center(
+            child: Wrap(
+              spacing: 16,
+              runSpacing: 10,
+              children: const [_FooterLink("Log-out  ➜]")],
+            ),
+          ),
+          const SizedBox(height: 10),
+
+          const Divider(),
+
+          const SizedBox(height: 14),
+
+          /// SUPPORT
+          const Text(
+            "Support",
+            style: TextStyle(fontWeight: FontWeight.w700, fontSize: 14),
+          ),
+          const SizedBox(height: 6),
+          const Text(
+            "support@infumedz.com",
+            style: TextStyle(fontSize: 13, color: Colors.black54),
+          ),
+          const SizedBox(height: 4),
+          const Text(
+            "+91 9XXXXXXXXX",
+            style: TextStyle(fontSize: 13, color: Colors.black54),
+          ),
+
+          /// LOGOUT BUTTON
+          const SizedBox(height: 14),
+
+          /// COPYRIGHT
+          Center(
+            child: Text(
+              "© 2026 InfuMedz. All rights reserved.",
+              style: TextStyle(fontSize: 12.5, color: Colors.grey.shade600),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _FooterLink extends StatelessWidget {
+  final String text;
+  const _FooterLink(this.text);
+  void _showLogoutDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (_) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+        title: const Text(
+          "Logout",
+          style: TextStyle(fontWeight: FontWeight.w700),
+        ),
+        content: const Text("Are you sure you want to logout from InfuMedz?"),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text("Cancel"),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.redAccent,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
+            onPressed: () async {
+              await UserSession.logout();
+
+              Navigator.pop(context);
+              Navigator.pushAndRemoveUntil(
+                context,
+                MaterialPageRoute(builder: (_) => LoginPage()),
+                (_) => false,
+              );
+            },
+            child: const Text("Logout"),
+          ),
+        ],
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: () {
+        _showLogoutDialog(context);
+      },
+      child: Text(
+        text,
+        style: const TextStyle(
+          fontSize: 13,
+          color: Color(0xFF4F46E5),
+          fontWeight: FontWeight.w600,
+        ),
+      ),
+    );
+  }
+}
+
 class _AdminHomeScreenState extends State<AdminHomeScreen> {
   bool fabOpen = false;
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFFF6F8FC),
+    return SafeArea(
+      child: Scaffold(
+        backgroundColor: const Color(0xFFF6F8FC),
 
-      /// 🔹 APP BAR
-      appBar: AppBar(
-        elevation: 0,
-        toolbarHeight: 78,
-        backgroundColor: Colors.transparent,
-        flexibleSpace: Container(
-          decoration: const BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: [Color(0xFF0E5FD8), Color(0xFF3B82F6)],
-            ),
-          ),
-        ),
-
-        titleSpacing: 20,
-        title: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: const [
-            Text(
-              "Dashboard",
-              style: TextStyle(
-                fontSize: 24,
-                fontWeight: FontWeight.w800,
-                letterSpacing: 0.3,
+        /// 🔹 APP BAR
+        appBar: AppBar(
+          elevation: 0,
+          toolbarHeight: 78,
+          backgroundColor: Colors.transparent,
+          flexibleSpace: Container(
+            decoration: const BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [Color(0xFF0E5FD8), Color(0xFF3B82F6)],
               ),
             ),
-            SizedBox(height: 2),
-            Text(
-              "Monitor & control your platform",
-              style: TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.w400,
-                color: Colors.white70,
+          ),
+
+          titleSpacing: 20,
+          title: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: const [
+              Text(
+                "Dashboard",
+                style: TextStyle(
+                  fontSize: 24,
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: 0.3,
+                ),
+              ),
+              SizedBox(height: 2),
+              Text(
+                "Monitor & control your platform",
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w400,
+                  color: Colors.white70,
+                ),
+              ),
+            ],
+          ),
+
+          actions: [
+            /// 🔴 LIVE STATUS
+            Container(
+              margin: const EdgeInsets.only(right: 10),
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+              decoration: BoxDecoration(
+                color: Colors.greenAccent.withOpacity(0.25),
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: const Text(
+                "LIVE",
+                style: TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white,
+                ),
+              ),
+            ),
+            const SizedBox(width: 12),
+
+            /// 🔔 NOTIFICATIONS
+            Container(
+              margin: const EdgeInsets.only(right: 16),
+              child: Stack(
+                children: [
+                  CircleAvatar(
+                    radius: 20,
+                    backgroundColor: Colors.white,
+                    child: IconButton(
+                      icon: const Icon(
+                        Icons.notifications_none_rounded,
+                        color: Color(0xFF0E5FD8),
+                      ),
+                      onPressed: () {
+                        // TODO: open admin notifications
+                      },
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+
+                  // 🔴 NOTIFICATION DOT
+                  Positioned(
+                    top: 6,
+                    right: 6,
+                    child: Container(
+                      height: 8,
+                      width: 8,
+                      decoration: const BoxDecoration(
+                        color: Colors.red,
+                        shape: BoxShape.circle,
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ),
           ],
         ),
 
-        actions: [
-          /// 🔴 LIVE STATUS
-          Container(
-            margin: const EdgeInsets.only(right: 10),
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-            decoration: BoxDecoration(
-              color: Colors.greenAccent.withOpacity(0.25),
-              borderRadius: BorderRadius.circular(20),
-            ),
-            child: const Text(
-              "LIVE",
-              style: TextStyle(
-                fontSize: 11,
-                fontWeight: FontWeight.bold,
-                color: Colors.white,
-              ),
-            ),
-          ),
-          const SizedBox(width: 12),
-
-          /// 🔔 NOTIFICATIONS
-          Container(
-            margin: const EdgeInsets.only(right: 16),
-            child: Stack(
-              children: [
-                CircleAvatar(
-                  radius: 20,
-                  backgroundColor: Colors.white,
-                  child: IconButton(
-                    icon: const Icon(
-                      Icons.notifications_none_rounded,
-                      color: Color(0xFF0E5FD8),
-                    ),
-                    onPressed: () {
-                      // TODO: open admin notifications
-                    },
-                  ),
+        /// 🔹 BODY
+        body: SingleChildScrollView(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              /// ===== ADMIN HEADER =====
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: Colors.grey.shade200),
+                  color: Colors.white,
                 ),
-                const SizedBox(width: 12),
-
-                // 🔴 NOTIFICATION DOT
-                Positioned(
-                  top: 6,
-                  right: 6,
-                  child: Container(
-                    height: 8,
-                    width: 8,
-                    decoration: const BoxDecoration(
-                      color: Colors.red,
-                      shape: BoxShape.circle,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-
-      /// 🔹 BODY
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            /// ===== ADMIN HEADER =====
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: Colors.grey.shade200),
-                color: Colors.white,
-              ),
-              child: Row(
-                children: [
-                  // 👤 AVATAR + STATUS
-                  Stack(
-                    children: [
-                      CircleAvatar(
-                        radius: 26,
-                        backgroundColor: Colors.indigo.shade50,
-                        child: ClipOval(
-                          child: Image(
-                            width: 52,
-                            height: 52,
-                            fit: BoxFit.cover,
-                            image: AssetImage("assets/admin.jpg"),
-                            errorBuilder: (_, _, _) {
-                              return const Icon(
-                                Icons.security,
-                                size: 26,
-                                color: Color(0xFF0E5FD8),
-                              );
-                            },
+                child: Row(
+                  children: [
+                    // 👤 AVATAR + STATUS
+                    Stack(
+                      children: [
+                        CircleAvatar(
+                          radius: 26,
+                          backgroundColor: Colors.indigo.shade50,
+                          child: ClipOval(
+                            child: Image(
+                              width: 52,
+                              height: 52,
+                              fit: BoxFit.cover,
+                              image: AssetImage("assets/admin.jpg"),
+                              errorBuilder: (_, _, _) {
+                                return const Icon(
+                                  Icons.security,
+                                  size: 26,
+                                  color: Color(0xFF0E5FD8),
+                                );
+                              },
+                            ),
                           ),
                         ),
-                      ),
 
-                      Positioned(
-                        bottom: 0,
-                        right: 0,
-                        child: Container(
-                          width: 12,
-                          height: 12,
-                          decoration: BoxDecoration(
-                            color: Colors.green,
-                            shape: BoxShape.circle,
-                            border: Border.all(color: Colors.white, width: 2),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-
-                  const SizedBox(width: 14),
-
-                  // 🧠 INFO
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: const [
-                        Text(
-                          "Akif Ahamad Baig",
-                          style: TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                        SizedBox(height: 3),
-                        Text(
-                          "Administrator",
-                          style: TextStyle(
-                            fontSize: 13,
-                            color: Colors.green,
-                            fontWeight: FontWeight.w600,
+                        Positioned(
+                          bottom: 0,
+                          right: 0,
+                          child: Container(
+                            width: 12,
+                            height: 12,
+                            decoration: BoxDecoration(
+                              color: Colors.green,
+                              shape: BoxShape.circle,
+                              border: Border.all(color: Colors.white, width: 2),
+                            ),
                           ),
                         ),
                       ],
                     ),
-                  ),
 
-                  // 🔘 ACTION
-                  Icon(Icons.more_vert, color: Colors.grey),
-                ],
-              ),
-            ),
+                    const SizedBox(width: 14),
 
-            const SizedBox(height: 20),
-
-            /// ===== KPI ROW =====
-            Row(
-              children: const [
-                _DashboardMetric(
-                  title: "Total Users",
-                  value: "2,430",
-                  icon: Icons.people,
-                  color: Colors.blue,
-                ),
-                SizedBox(width: 12),
-                _DashboardMetric(
-                  title: "Total Courses",
-                  value: "42",
-                  icon: Icons.play_circle,
-                  color: Colors.green,
-                ),
-              ],
-            ),
-
-            const SizedBox(height: 14),
-
-            Row(
-              children: const [
-                _DashboardMetric(
-                  title: "Orders",
-                  value: "128",
-                  icon: Icons.shopping_cart,
-                  color: Colors.orange,
-                ),
-                SizedBox(width: 12),
-                _DashboardMetric(
-                  title: "Requests",
-                  value: "36",
-                  icon: Icons.article,
-                  color: Colors.purple,
-                ),
-              ],
-            ),
-
-            const SizedBox(height: 10),
-
-            /// ===== ANALYTICS TITLE =====
-            const Text(
-              "Analytics Overview",
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
-            ),
-
-            const SizedBox(height: 10),
-
-            /// ===== CHART CARD =====
-            Container(
-              height: 260,
-              padding: const EdgeInsets.all(16),
-              decoration: _cardDecoration(),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    "User Growth (Last 7 Days)",
-                    style: TextStyle(fontWeight: FontWeight.w700, fontSize: 15),
-                  ),
-                  const SizedBox(height: 16),
-
-                  Expanded(
-                    child: LineChart(
-                      LineChartData(
-                        minY: 0,
-                        maxY: 120,
-                        gridData: FlGridData(
-                          show: true,
-                          drawVerticalLine: false,
-                          horizontalInterval: 20,
-                          getDrawingHorizontalLine: (value) {
-                            return FlLine(
-                              color: Colors.grey.withOpacity(0.15),
-                              strokeWidth: 1,
-                            );
-                          },
-                        ),
-
-                        borderData: FlBorderData(show: false),
-
-                        titlesData: FlTitlesData(
-                          topTitles: AxisTitles(
-                            sideTitles: SideTitles(showTitles: false),
-                          ),
-                          rightTitles: AxisTitles(
-                            sideTitles: SideTitles(showTitles: false),
-                          ),
-
-                          leftTitles: AxisTitles(
-                            sideTitles: SideTitles(
-                              showTitles: true,
-                              interval: 20,
-                              reservedSize: 40,
-                              getTitlesWidget: (value, meta) {
-                                return Text(
-                                  value.toInt().toString(),
-                                  style: const TextStyle(
-                                    fontSize: 11,
-                                    color: Colors.grey,
-                                  ),
-                                );
-                              },
+                    // 🧠 INFO
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: const [
+                          Text(
+                            "Akif Ahamad Baig",
+                            style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.w700,
                             ),
                           ),
-
-                          bottomTitles: AxisTitles(
-                            sideTitles: SideTitles(
-                              showTitles: true,
-                              interval: 1,
-                              getTitlesWidget: (value, meta) {
-                                const days = [
-                                  "Mon",
-                                  "Tue",
-                                  "Wed",
-                                  "Thu",
-                                  "Fri",
-                                  "Sat",
-                                  "Sun",
-                                ];
-                                if (value.toInt() < days.length) {
-                                  return Padding(
-                                    padding: const EdgeInsets.only(top: 6),
-                                    child: Text(
-                                      days[value.toInt()],
-                                      style: const TextStyle(
-                                        fontSize: 11,
-                                        color: Colors.grey,
-                                      ),
-                                    ),
-                                  );
-                                }
-                                return const SizedBox();
-                              },
+                          SizedBox(height: 3),
+                          Text(
+                            "Administrator",
+                            style: TextStyle(
+                              fontSize: 13,
+                              color: Colors.green,
+                              fontWeight: FontWeight.w600,
                             ),
-                          ),
-                        ),
-
-                        lineTouchData: LineTouchData(
-                          enabled: true,
-                          touchTooltipData: LineTouchTooltipData(
-                            tooltipBgColor: Colors.black87,
-                            getTooltipItems: (spots) {
-                              return spots.map((spot) {
-                                return LineTooltipItem(
-                                  "${spot.y.toInt()} users",
-                                  const TextStyle(
-                                    color: Colors.white,
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                                );
-                              }).toList();
-                            },
-                          ),
-                        ),
-
-                        lineBarsData: [
-                          LineChartBarData(
-                            isCurved: true,
-                            curveSmoothness: 0.25,
-                            barWidth: 4,
-                            color: const Color(0xFF0E5FD8),
-                            belowBarData: BarAreaData(
-                              show: true,
-                              gradient: LinearGradient(
-                                begin: Alignment.topCenter,
-                                end: Alignment.bottomCenter,
-                                colors: [
-                                  const Color(0xFF0E5FD8).withOpacity(0.35),
-                                  Colors.transparent,
-                                ],
-                              ),
-                            ),
-                            dotData: FlDotData(
-                              show: true,
-                              getDotPainter: (spot, percent, bar, index) {
-                                return FlDotCirclePainter(
-                                  radius: 3.5,
-                                  color: Colors.white,
-                                  strokeWidth: 2,
-                                  strokeColor: const Color(0xFF0E5FD8),
-                                );
-                              },
-                            ),
-                            spots: const [
-                              FlSpot(0, 40),
-                              FlSpot(1, 55),
-                              FlSpot(2, 48),
-                              FlSpot(3, 70),
-                              FlSpot(4, 90),
-                              FlSpot(5, 105),
-                              FlSpot(6, 115),
-                            ],
                           ),
                         ],
                       ),
                     ),
+
+                    // 🔘 ACTION
+                    Icon(Icons.more_vert, color: Colors.grey),
+                  ],
+                ),
+              ),
+
+              const SizedBox(height: 20),
+
+              /// ===== KPI ROW =====
+              Row(
+                children: const [
+                  _DashboardMetric(
+                    title: "Total Users",
+                    value: "2,430",
+                    icon: Icons.people,
+                    color: Colors.blue,
+                  ),
+                  SizedBox(width: 12),
+                  _DashboardMetric(
+                    title: "Total Courses",
+                    value: "42",
+                    icon: Icons.play_circle,
+                    color: Colors.green,
                   ),
                 ],
               ),
-            ),
 
-            const SizedBox(height: 20),
+              const SizedBox(height: 14),
 
-            /// ===== RECENT ACTIVITY =====
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Row(
-                  children: const [
-                    Icon(Icons.auto_awesome, color: Color(0xFF0E5FD8)),
-                    SizedBox(width: 8),
-                    Text(
-                      "Recent Activity",
-                      style: TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.w800,
-                        letterSpacing: 0.2,
-                      ),
-                    ),
-                  ],
-                ),
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 10,
-                    vertical: 4,
-                  ),
-                  decoration: BoxDecoration(
-                    color: Colors.green.withOpacity(0.12),
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: const Text(
-                    "LIVE",
-                    style: TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.green,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 6),
-            const Text(
-              "The Latest Activities held ",
-              style: TextStyle(fontSize: 13, color: Colors.grey),
-            ),
-
-            const SizedBox(height: 16),
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: _cardDecoration(),
-              child: Column(
+              Row(
                 children: const [
-                  _SmartActivityTile(
-                    icon: Icons.person_add_alt_1,
-                    title: "New user registered",
-                    subtitle: "MBBS student joined the platform",
-                    time: "2 mins ago",
-                    color: Colors.green,
-                  ),
-                  Divider(height: 26),
-
-                  _SmartActivityTile(
-                    icon: Icons.shopping_cart_checkout,
-                    title: "Course purchased",
-                    subtitle: "MD Medicine – Clinical Q&A",
-                    time: "10 mins ago",
-                    color: Colors.blue,
-                  ),
-                  Divider(height: 26),
-
-                  _SmartActivityTile(
-                    icon: Icons.description,
-                    title: "Thesis request submitted",
-                    subtitle: "Awaiting admin review",
-                    time: "1 hour ago",
+                  _DashboardMetric(
+                    title: "Orders",
+                    value: "128",
+                    icon: Icons.shopping_cart,
                     color: Colors.orange,
                   ),
-                  Divider(height: 26),
-
-                  _SmartActivityTile(
-                    icon: Icons.insights,
-                    title: "User activity recorded",
-                    subtitle: "Learning progress updated",
-                    time: "1 hour ago",
+                  SizedBox(width: 12),
+                  _DashboardMetric(
+                    title: "Requests",
+                    value: "36",
+                    icon: Icons.article,
                     color: Colors.purple,
                   ),
                 ],
               ),
-            ),
 
-            const SizedBox(height: 100),
-          ],
+              const SizedBox(height: 10),
+
+              /// ===== ANALYTICS TITLE =====
+              const Text(
+                "Analytics Overview",
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
+              ),
+
+              const SizedBox(height: 10),
+
+              /// ===== CHART CARD =====
+              Container(
+                height: 260,
+                padding: const EdgeInsets.all(16),
+                decoration: _cardDecoration(),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      "User Growth (Last 7 Days)",
+                      style: TextStyle(
+                        fontWeight: FontWeight.w700,
+                        fontSize: 15,
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+
+                    Expanded(
+                      child: LineChart(
+                        LineChartData(
+                          minY: 0,
+                          maxY: 120,
+                          gridData: FlGridData(
+                            show: true,
+                            drawVerticalLine: false,
+                            horizontalInterval: 20,
+                            getDrawingHorizontalLine: (value) {
+                              return FlLine(
+                                color: Colors.grey.withOpacity(0.15),
+                                strokeWidth: 1,
+                              );
+                            },
+                          ),
+
+                          borderData: FlBorderData(show: false),
+
+                          titlesData: FlTitlesData(
+                            topTitles: AxisTitles(
+                              sideTitles: SideTitles(showTitles: false),
+                            ),
+                            rightTitles: AxisTitles(
+                              sideTitles: SideTitles(showTitles: false),
+                            ),
+
+                            leftTitles: AxisTitles(
+                              sideTitles: SideTitles(
+                                showTitles: true,
+                                interval: 20,
+                                reservedSize: 40,
+                                getTitlesWidget: (value, meta) {
+                                  return Text(
+                                    value.toInt().toString(),
+                                    style: const TextStyle(
+                                      fontSize: 11,
+                                      color: Colors.grey,
+                                    ),
+                                  );
+                                },
+                              ),
+                            ),
+
+                            bottomTitles: AxisTitles(
+                              sideTitles: SideTitles(
+                                showTitles: true,
+                                interval: 1,
+                                getTitlesWidget: (value, meta) {
+                                  const days = [
+                                    "Mon",
+                                    "Tue",
+                                    "Wed",
+                                    "Thu",
+                                    "Fri",
+                                    "Sat",
+                                    "Sun",
+                                  ];
+                                  if (value.toInt() < days.length) {
+                                    return Padding(
+                                      padding: const EdgeInsets.only(top: 6),
+                                      child: Text(
+                                        days[value.toInt()],
+                                        style: const TextStyle(
+                                          fontSize: 11,
+                                          color: Colors.grey,
+                                        ),
+                                      ),
+                                    );
+                                  }
+                                  return const SizedBox();
+                                },
+                              ),
+                            ),
+                          ),
+
+                          lineTouchData: LineTouchData(
+                            enabled: true,
+                            touchTooltipData: LineTouchTooltipData(
+                              tooltipBgColor: Colors.black87,
+                              getTooltipItems: (spots) {
+                                return spots.map((spot) {
+                                  return LineTooltipItem(
+                                    "${spot.y.toInt()} users",
+                                    const TextStyle(
+                                      color: Colors.white,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  );
+                                }).toList();
+                              },
+                            ),
+                          ),
+
+                          lineBarsData: [
+                            LineChartBarData(
+                              isCurved: true,
+                              curveSmoothness: 0.25,
+                              barWidth: 4,
+                              color: const Color(0xFF0E5FD8),
+                              belowBarData: BarAreaData(
+                                show: true,
+                                gradient: LinearGradient(
+                                  begin: Alignment.topCenter,
+                                  end: Alignment.bottomCenter,
+                                  colors: [
+                                    const Color(0xFF0E5FD8).withOpacity(0.35),
+                                    Colors.transparent,
+                                  ],
+                                ),
+                              ),
+                              dotData: FlDotData(
+                                show: true,
+                                getDotPainter: (spot, percent, bar, index) {
+                                  return FlDotCirclePainter(
+                                    radius: 3.5,
+                                    color: Colors.white,
+                                    strokeWidth: 2,
+                                    strokeColor: const Color(0xFF0E5FD8),
+                                  );
+                                },
+                              ),
+                              spots: const [
+                                FlSpot(0, 40),
+                                FlSpot(1, 55),
+                                FlSpot(2, 48),
+                                FlSpot(3, 70),
+                                FlSpot(4, 90),
+                                FlSpot(5, 105),
+                                FlSpot(6, 115),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
+              const SizedBox(height: 20),
+
+              /// ===== RECENT ACTIVITY =====
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Row(
+                    children: const [
+                      Icon(Icons.auto_awesome, color: Color(0xFF0E5FD8)),
+                      SizedBox(width: 8),
+                      Text(
+                        "Recent Activity",
+                        style: TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.w800,
+                          letterSpacing: 0.2,
+                        ),
+                      ),
+                    ],
+                  ),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 4,
+                    ),
+                    decoration: BoxDecoration(
+                      color: Colors.green.withOpacity(0.12),
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: const Text(
+                      "LIVE",
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.green,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 6),
+              const Text(
+                "The Latest Activities held ",
+                style: TextStyle(fontSize: 13, color: Colors.grey),
+              ),
+
+              const SizedBox(height: 16),
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: _cardDecoration(),
+                child: Column(
+                  children: const [
+                    _SmartActivityTile(
+                      icon: Icons.person_add_alt_1,
+                      title: "New user registered",
+                      subtitle: "MBBS student joined the platform",
+                      time: "2 mins ago",
+                      color: Colors.green,
+                    ),
+                    Divider(height: 26),
+
+                    _SmartActivityTile(
+                      icon: Icons.shopping_cart_checkout,
+                      title: "Course purchased",
+                      subtitle: "MD Medicine – Clinical Q&A",
+                      time: "10 mins ago",
+                      color: Colors.blue,
+                    ),
+                    Divider(height: 26),
+
+                    _SmartActivityTile(
+                      icon: Icons.description,
+                      title: "Thesis request submitted",
+                      subtitle: "Awaiting admin review",
+                      time: "1 hour ago",
+                      color: Colors.orange,
+                    ),
+                    Divider(height: 26),
+
+                    _SmartActivityTile(
+                      icon: Icons.insights,
+                      title: "User activity recorded",
+                      subtitle: "Learning progress updated",
+                      time: "1 hour ago",
+                      color: Colors.purple,
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 10),
+
+              _AppFooter(),
+
+              const SizedBox(height: 100),
+            ],
+          ),
         ),
-      ),
 
-      /// 🔹 FLOATING ACTION MENU
+        /// 🔹 FLOATING ACTION MENU
+      ),
     );
   }
 }
@@ -1924,7 +2107,7 @@ class _AdminBannerScreenState extends State<AdminBannerScreen> {
                             if (newCategoryCtrl.text.trim().isEmpty) return;
                             setDialogState(() {
                               tempCategories.add({
-                                "id": null, // new
+                                "id": 5, // new
                                 "name": newCategoryCtrl.text.trim(),
                               });
                               newCategoryCtrl.clear();
@@ -1993,19 +2176,27 @@ class _AdminBannerScreenState extends State<AdminBannerScreen> {
         );
       }
     }
+    final existingNames = categories
+        .map((c) => c["name"].toString().toLowerCase())
+        .toSet();
 
-    // 🔥 ADD
     for (final cat in categories) {
-      if (cat["id"] == null) {
-        debugPrint("Adding category ${cat["name"]}");
+      final name = cat["name"].toString().trim();
 
-        await http.post(
+      if (!existingNames.contains(name.toLowerCase())) {
+        debugPrint("Adding category $name");
+
+        final res = await http.post(
           Uri.parse("https://api.chandus7.in/api/infumedz/categories/"),
           headers: {"Content-Type": "application/json"},
-          body: jsonEncode({"name": cat["name"]}),
+          body: jsonEncode({"name": name}),
         );
+
+        debugPrint("Status: ${name}");
+        debugPrint("Body: ${res.body}");
       }
     }
+
     debugPrint(
       "CURRENT: ---------------------------------------------------------------",
     );
@@ -2040,20 +2231,29 @@ class _AdminBannerScreenState extends State<AdminBannerScreen> {
     );
 
     final banner = jsonDecode(bannerRes.body);
-    final courses = jsonDecode(coursesRes.body);
-    final books = jsonDecode(booksRes.body);
+    final courses = List<Map<String, dynamic>>.from(
+      jsonDecode(coursesRes.body),
+    );
+    final books = List<Map<String, dynamic>>.from(jsonDecode(booksRes.body));
+
+    final courseIds = courses.map((c) => c["id"]).toSet();
+    final bookIds = books.map((b) => b["id"]).toSet();
 
     setState(() {
+      allCourses = courses;
+      allBooks = books;
+
+      // ✅ CLEAN DELETED REFERENCES
+      popularCourseIds = List<String>.from(
+        banner["popular_courses"] ?? [],
+      ).where(courseIds.contains).toList();
+
+      popularBookIds = List<String>.from(
+        banner["popular_books"] ?? [],
+      ).where(bookIds.contains).toList();
+
       aboutController.text = banner["about_text"] ?? "";
       carouselUrls = List<String>.from(banner["carousel_urls"] ?? []);
-
-      popularCourseIds = List<String>.from(banner["popular_courses"] ?? []);
-
-      popularBookIds = List<String>.from(banner["popular_books"] ?? []);
-
-      allCourses = List<Map<String, dynamic>>.from(courses);
-      allBooks = List<Map<String, dynamic>>.from(books);
-
       loading = false;
     });
   }
@@ -2217,7 +2417,9 @@ class _AdminBannerScreenState extends State<AdminBannerScreen> {
     int index,
     void Function(void Function()) setDialogState,
   ) {
-    final value = index < popularCourseIds.length
+    final value =
+        (index < popularCourseIds.length &&
+            allCourses.any((c) => c["id"] == popularCourseIds[index]))
         ? popularCourseIds[index]
         : null;
 
@@ -2772,10 +2974,13 @@ class AdminDeleteDialog extends StatefulWidget {
 }
 
 class _AdminDeleteDialogState extends State<AdminDeleteDialog> {
-  String? selectedCourseId;
-  String? selectedBookId;
+  String deleteType = "course";
 
-  String deleteType = "course"; // "course" | "book"
+  String? selectedCourseId;
+  String? selectedVideoId;
+
+  String? selectedBookId;
+  String? selectedPdfId;
 
   List<Map<String, dynamic>> courses = [];
   List<Map<String, dynamic>> books = [];
@@ -2788,41 +2993,10 @@ class _AdminDeleteDialogState extends State<AdminDeleteDialog> {
     loadData();
   }
 
-  Future<void> deleteItem({required String type, required String id}) async {
-    final url = type == "course"
-        ? "https://api.chandus7.in/api/infumedz/course/$id/"
-        : "https://api.chandus7.in/api/infumedz/book/$id/";
-
-    try {
-      final res = await http.delete(Uri.parse(url));
-
-      if (res.statusCode == 200) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text("${type.toUpperCase()} deleted successfully")),
-        );
-
-        Navigator.pop(context, true); // notify parent to refresh
-      } else {
-        print(res.body);
-        final body = jsonDecode(res.body);
-        print(body["error"]);
-
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(body["error"] ?? "Delete failed")),
-        );
-      }
-    } catch (e) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text("Error: $e")));
-    }
-  }
-
   Future<void> loadData() async {
     final cRes = await http.get(
       Uri.parse("https://api.chandus7.in/api/infumedz/courses/"),
     );
-
     final bRes = await http.get(
       Uri.parse("https://api.chandus7.in/api/infumedz/books/"),
     );
@@ -2832,6 +3006,45 @@ class _AdminDeleteDialogState extends State<AdminDeleteDialog> {
       books = List<Map<String, dynamic>>.from(jsonDecode(bRes.body));
       loading = false;
     });
+  }
+
+  Future<void> deleteByType() async {
+    String? url;
+
+    switch (deleteType) {
+      case "course":
+        url = "https://api.chandus7.in/api/infumedz/course/$selectedCourseId/";
+        break;
+
+      case "course_video":
+        url =
+            "https://api.chandus7.in/api/infumedz/course/video/$selectedVideoId/delete/";
+        break;
+
+      case "book":
+        url = "https://api.chandus7.in/api/infumedz/book/$selectedBookId/";
+        break;
+
+      case "book_pdf":
+        url =
+            "https://api.chandus7.in/api/infumedz/book/pdf/$selectedPdfId/delete/";
+        break;
+    }
+
+    if (url == null) return;
+
+    final res = await http.delete(Uri.parse(url));
+
+    if (res.statusCode == 200) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text("Deleted successfully")));
+      Navigator.pop(context, true);
+    } else {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text("Delete failed")));
+    }
   }
 
   @override
@@ -2846,74 +3059,149 @@ class _AdminDeleteDialogState extends State<AdminDeleteDialog> {
           : Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                /// TYPE SWITCH
-                ToggleButtons(
-                  isSelected: [deleteType == "course", deleteType == "book"],
-                  onPressed: (index) {
-                    setState(() {
-                      deleteType = index == 0 ? "course" : "book";
-                      selectedCourseId = null;
-                      selectedBookId = null;
-                    });
-                  },
-                  children: const [
-                    Padding(
-                      padding: EdgeInsets.symmetric(horizontal: 16),
-                      child: Text("Course"),
+                /// 🔘 TYPE SWITCH
+                Column(
+                  children: [
+                    ToggleButtons(
+                      borderRadius: BorderRadius.circular(8),
+                      constraints: const BoxConstraints(minHeight: 42),
+                      isSelected: [
+                        deleteType == "course",
+                        deleteType == "course_video",
+                      ],
+                      onPressed: (i) {
+                        setState(() {
+                          deleteType = i == 0 ? "course" : "course_video";
+                          selectedCourseId = null;
+                          selectedVideoId = null;
+                          selectedBookId = null;
+                          selectedPdfId = null;
+                        });
+                      },
+                      children: const [
+                        SizedBox(
+                          width: 100, // ✅ SAME WIDTH
+                          child: Center(child: Text("Course")),
+                        ),
+                        SizedBox(
+                          width: 100, // ✅ SAME WIDTH
+                          child: Center(child: Text("Course Video")),
+                        ),
+                      ],
                     ),
-                    Padding(
-                      padding: EdgeInsets.symmetric(horizontal: 16),
-                      child: Text("Book"),
+
+                    const SizedBox(height: 10),
+
+                    ToggleButtons(
+                      borderRadius: BorderRadius.circular(8),
+                      constraints: const BoxConstraints(minHeight: 42),
+                      isSelected: [
+                        deleteType == "book",
+                        deleteType == "book_pdf",
+                      ],
+                      onPressed: (i) {
+                        setState(() {
+                          deleteType = i == 0 ? "book" : "book_pdf";
+                          selectedCourseId = null;
+                          selectedVideoId = null;
+                          selectedBookId = null;
+                          selectedPdfId = null;
+                        });
+                      },
+                      children: const [
+                        SizedBox(
+                          width: 100, // ✅ SAME WIDTH
+                          child: Center(child: Text("Book")),
+                        ),
+                        SizedBox(
+                          width: 100, // ✅ SAME WIDTH
+                          child: Center(child: Text("Book PDF")),
+                        ),
+                      ],
                     ),
                   ],
                 ),
 
                 const SizedBox(height: 16),
 
-                /// COURSE DROPDOWN
-                if (deleteType == "course")
+                /// COURSE SELECT
+                if (deleteType == "course" || deleteType == "course_video")
                   DropdownButton<String>(
-                    value:
-                        courses.any(
-                          (c) => c["id"].toString() == selectedCourseId,
-                        )
-                        ? selectedCourseId
-                        : null, // ✅ SAFE
-                    hint: const Text("Select Course"),
                     isExpanded: true,
-                    items: courses.map((course) {
-                      return DropdownMenuItem<String>(
-                        value: course["id"].toString(),
-                        child: Text(course["title"]),
+                    hint: const Text("Select Course"),
+                    value: selectedCourseId,
+                    items: courses.map((c) {
+                      return DropdownMenuItem(
+                        value: c["id"].toString(),
+                        child: Text(c["title"]),
                       );
                     }).toList(),
-                    onChanged: (value) {
+                    onChanged: (v) {
                       setState(() {
-                        selectedCourseId = value;
+                        selectedCourseId = v;
+                        selectedVideoId = null;
                       });
                     },
                   ),
+                SizedBox(height: 10),
 
-                /// BOOK DROPDOWN
-                if (deleteType == "book")
+                /// VIDEO SELECT
+                if (deleteType == "course_video" && selectedCourseId != null)
                   DropdownButton<String>(
-                    value:
-                        books.any((b) => b["id"].toString() == selectedBookId)
-                        ? selectedBookId
-                        : null, // ✅ SAFE
-                    hint: const Text("Select Book"),
                     isExpanded: true,
-                    items: books.map((book) {
-                      return DropdownMenuItem<String>(
-                        value: book["id"].toString(),
-                        child: Text(book["title"]),
+                    hint: const Text("Select Video"),
+                    value: selectedVideoId,
+                    items: courses
+                        .firstWhere(
+                          (c) => c["id"] == selectedCourseId,
+                        )["videos"]
+                        .map<DropdownMenuItem<String>>((v) {
+                          return DropdownMenuItem(
+                            value: v["id"].toString(),
+                            child: Text(v["title"]),
+                          );
+                        })
+                        .toList(),
+                    onChanged: (v) => setState(() => selectedVideoId = v),
+                  ),
+
+                /// BOOK SELECT
+                if (deleteType == "book" || deleteType == "book_pdf")
+                  DropdownButton<String>(
+                    isExpanded: true,
+                    hint: const Text("Select Book"),
+                    value: selectedBookId,
+                    items: books.map((b) {
+                      return DropdownMenuItem(
+                        value: b["id"].toString(),
+                        child: Text(b["title"]),
                       );
                     }).toList(),
-                    onChanged: (value) {
+                    onChanged: (v) {
                       setState(() {
-                        selectedBookId = value;
+                        selectedBookId = v;
+                        selectedPdfId = null;
                       });
                     },
+                  ),
+                SizedBox(height: 10),
+
+                /// PDF SELECT
+                if (deleteType == "book_pdf" && selectedBookId != null)
+                  DropdownButton<String>(
+                    isExpanded: true,
+                    hint: const Text("Select PDF"),
+                    value: selectedPdfId,
+                    items: books
+                        .firstWhere((b) => b["id"] == selectedBookId)["pdfs"]
+                        .map<DropdownMenuItem<String>>((p) {
+                          return DropdownMenuItem(
+                            value: p["id"].toString(),
+                            child: Text(p["title"]),
+                          );
+                        })
+                        .toList(),
+                    onChanged: (v) => setState(() => selectedPdfId = v),
                   ),
               ],
             ),
@@ -2924,50 +3212,34 @@ class _AdminDeleteDialogState extends State<AdminDeleteDialog> {
         ),
         ElevatedButton(
           style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-
-          // 🔒 DISABLE BUTTON WHEN NOTHING IS SELECTED
-          onPressed:
-              (deleteType == "course" && selectedCourseId == null) ||
-                  (deleteType == "book" && selectedBookId == null)
-              ? null
-              : () async {
-                  // ⚠️ CONFIRMATION DIALOG
-                  final confirm = await showDialog<bool>(
-                    context: context,
-                    builder: (context) => AlertDialog(
-                      title: const Text("Confirm Delete"),
-                      content: Text(
-                        deleteType == "course"
-                            ? "Are you sure you want to deactivate this course?"
-                            : "Are you sure you want to deactivate this book?",
-                      ),
-                      actions: [
-                        TextButton(
-                          onPressed: () => Navigator.pop(context, false),
-                          child: const Text("Cancel"),
-                        ),
-                        ElevatedButton(
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.red,
-                          ),
-                          onPressed: () => Navigator.pop(context, true),
-                          child: const Text("Yes, Delete"),
-                        ),
-                      ],
+          onPressed: () async {
+            final confirm = await showDialog<bool>(
+              context: context,
+              builder: (_) => AlertDialog(
+                title: const Text("Confirm Delete"),
+                content: const Text(
+                  "This action will remove content permanently.",
+                ),
+                actions: [
+                  TextButton(
+                    onPressed: () => Navigator.pop(context, false),
+                    child: const Text("Cancel"),
+                  ),
+                  ElevatedButton(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.red,
                     ),
-                  );
+                    onPressed: () => Navigator.pop(context, true),
+                    child: const Text("Yes, Delete"),
+                  ),
+                ],
+              ),
+            );
 
-                  // ❌ USER CANCELLED
-                  if (confirm != true) return;
-
-                  // ✅ PERFORM DELETE
-                  if (deleteType == "course") {
-                    await deleteItem(type: "course", id: selectedCourseId!);
-                  } else {
-                    await deleteItem(type: "book", id: selectedBookId!);
-                  }
-                },
-
+            if (confirm == true) {
+              await deleteByType();
+            }
+          },
           child: const Text("Delete"),
         ),
       ],

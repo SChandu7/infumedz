@@ -100,18 +100,6 @@ class _LibraryPageState extends State<LibraryPage> {
                 ),
                 const SizedBox(height: 12),
                 ...books.map((b) => _LibraryPdfCard(pdf: b)),
-                ElevatedButton(
-                  onPressed: () async {
-                    await UserSession.logout();
-                    if (mounted) {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(builder: (_) => const InfuMedzApp()),
-                      );
-                    }
-                  },
-                  child: const Text("Logout"),
-                ),
               ],
             ],
           );
@@ -340,27 +328,6 @@ class _EmptyLibrary extends StatelessWidget {
   }
 }
 
-/* ---------------- SESSION ---------------- */
-
-// class SessionManager {
-//   static const _keyUserId = "user_id";
-
-//   static Future<void> saveUserId(String userId) async {
-//     final prefs = await SharedPreferences.getInstance();
-//     await prefs.setString(_keyUserId, userId);
-//   }
-
-//   static Future<String?> getUserId() async {
-//     final prefs = await SharedPreferences.getInstance();
-//     return prefs.getString(_keyUserId);
-//   }
-
-//   static Future<void> logout() async {
-//     final prefs = await SharedPreferences.getInstance();
-//     await prefs.remove(_keyUserId);
-//   }
-// }
-
 class CourseDetailLoaderScreen extends StatefulWidget {
   final String id;
   final String type; // "course" | "book"
@@ -412,8 +379,12 @@ class _CourseDetailLoaderScreenState extends State<CourseDetailLoaderScreen> {
 
         if (snapshot.hasError || !snapshot.hasData) {
           print(snapshot.error);
-          return Scaffold(
-            body: Center(child: Text("Failed to load content $snapshot.error")),
+          return const Scaffold(
+            body: Center(
+              child: Text(
+                "This Course Will Be Deleted / Does'nt Exist \n Please Contact  Officials For any Queries ",
+              ),
+            ),
           );
         }
 

@@ -504,10 +504,21 @@ class _PdfScreenState extends State<PdfScreen> {
   // ================= DOWNLOAD FROM URL =================
   Future<void> _preparePdf() async {
     final dir = await getTemporaryDirectory();
-    final file = File("${dir.path}/${widget.title}.pdf");
+    print(widget.pdfUrl);
+    print(112);
+
+    // ✅ SAFE FILE NAME
+    final safeName = widget.title
+        .replaceAll(RegExp(r'[^\w\s-]'), '')
+        .replaceAll(' ', '_');
+
+    final file = File("${dir.path}/$safeName.pdf");
 
     if (!await file.exists()) {
-      await Dio().download(widget.pdfUrl, file.path);
+      await Dio().download(
+        widget.pdfUrl, // ✅ AS-IS (already encoded)
+        file.path,
+      );
     }
 
     setState(() {

@@ -5,10 +5,10 @@ import 'package:flutter/material.dart';
 import 'package:animate_do/animate_do.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:flutter_keyboard_visibility/flutter_keyboard_visibility.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'main.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:http/http.dart' as http;
-import 'package:shared_preferences/shared_preferences.dart';
 import 'admin.dart';
 import 'main.dart';
 
@@ -333,36 +333,91 @@ class _LoginPageState extends State<LoginPage> {
                                 duration: const Duration(milliseconds: 1400),
                                 child: MaterialButton(
                                   onPressed: () async {
-                                    final res = await http.post(
-                                      Uri.parse(
-                                        "https://api.chandus7.in/api/infumedz/auth/login/",
-                                      ),
-                                      headers: {
-                                        "Content-Type": "application/json",
-                                      },
-                                      body: jsonEncode({
-                                        "identifier": _GetUsername.text,
-                                        "password": _GetUserPassword.text,
-                                      }),
-                                    );
-
-                                    if (res.statusCode == 200) {
-                                      final data = jsonDecode(res.body);
-                                      await UserSession.saveUserId(
-                                        data["user_id"],
-                                      );
-
-                                      Navigator.pushReplacement(
-                                        context,
-                                        MaterialPageRoute(
-                                          builder: (_) => InfuMedzApp(),
-                                        ),
-                                      );
-                                    } else {
+                                    if (_GetUsername.text.trim().isEmpty ||
+                                        _GetUserPassword.text.trim().isEmpty) {
                                       ScaffoldMessenger.of(
                                         context,
                                       ).showSnackBar(
-                                        SnackBar(content: Text("Login failed")),
+                                        const SnackBar(
+                                          content: Text(
+                                            "Please fill all fields",
+                                          ),
+                                        ),
+                                      );
+                                      return;
+                                    }
+
+                                    try {
+                                      final res = await http.post(
+                                        Uri.parse(
+                                          "https://api.chandus7.in/api/infumedz/login/",
+                                        ),
+                                        headers: {
+                                          "Content-Type": "application/json",
+                                        },
+                                        body: jsonEncode({
+                                          "identifier": _GetUsername.text
+                                              .trim(),
+                                          "password": _GetUserPassword.text
+                                              .trim(),
+                                        }),
+                                      );
+
+                                      if (res.statusCode == 200) {
+                                        final data = jsonDecode(res.body);
+                                        final String userId = data["user_id"];
+
+                                        // ✅ SAVE USER ID
+                                        await UserSession.saveUserId(userId);
+
+                                        // 🔁 FETCH FULL USER PROFILE
+                                        final res2 = await http.get(
+                                          Uri.parse(
+                                            "https://api.chandus7.in/api/infumedz/user/$userId/",
+                                          ),
+                                        );
+
+                                        if (res2.statusCode == 200) {
+                                          final data2 = jsonDecode(res2.body);
+
+                                          await UserSession.saveUsername(
+                                            data2["name"],
+                                          );
+                                          await UserSession.saveUseremail(
+                                            data2["email"],
+                                          ); // ✅ FIXED
+                                          await UserSession.saveUserphonenumber(
+                                            data2["phone"],
+                                          );
+                                        }
+
+                                        // ✅ NAVIGATE
+                                        Navigator.pushReplacement(
+                                          context,
+                                          MaterialPageRoute(
+                                            builder: (_) => const MainShell(),
+                                          ),
+                                        );
+                                      } else {
+                                        ScaffoldMessenger.of(
+                                          context,
+                                        ).showSnackBar(
+                                          const SnackBar(
+                                            content: Text(
+                                              "Invalid credentials",
+                                            ),
+                                          ),
+                                        );
+                                      }
+                                    } catch (e) {
+                                      ScaffoldMessenger.of(
+                                        context,
+                                      ).showSnackBar(
+                                        const SnackBar(
+                                          content: Text(
+                                            "Server error. Try again",
+                                          ),
+                                        ),
                                       );
                                     }
                                   },
@@ -406,63 +461,6 @@ class _LoginPageState extends State<LoginPage> {
                                 ),
                               ),
                               const SizedBox(height: 30),
-                              Row(
-                                children: <Widget>[
-                                  Expanded(
-                                    child: FadeInUp(
-                                      duration: const Duration(
-                                        milliseconds: 1600,
-                                      ),
-                                      child: MaterialButton(
-                                        onPressed: () {},
-                                        height: 50,
-                                        color: Colors.blue,
-                                        shape: RoundedRectangleBorder(
-                                          borderRadius: BorderRadius.circular(
-                                            50,
-                                          ),
-                                        ),
-                                        child: const Center(
-                                          child: Text(
-                                            "Facebook",
-                                            style: TextStyle(
-                                              color: Colors.white,
-                                              fontWeight: FontWeight.bold,
-                                            ),
-                                          ),
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                  const SizedBox(width: 30),
-                                  Expanded(
-                                    child: FadeInUp(
-                                      duration: const Duration(
-                                        milliseconds: 1700,
-                                      ),
-                                      child: MaterialButton(
-                                        onPressed: () {},
-                                        height: 50,
-                                        color: Colors.black,
-                                        shape: RoundedRectangleBorder(
-                                          borderRadius: BorderRadius.circular(
-                                            50,
-                                          ),
-                                        ),
-                                        child: const Center(
-                                          child: Text(
-                                            "Google",
-                                            style: TextStyle(
-                                              color: Colors.white,
-                                              fontWeight: FontWeight.bold,
-                                            ),
-                                          ),
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ),
                             ],
                           ),
                         ),
@@ -544,7 +542,7 @@ class _SignUpPageState extends State<SignUpPage> {
                   ],
                 ),
               ),
-              const SizedBox(height: 20),
+              const SizedBox(height: 50),
               Container(
                 decoration: const BoxDecoration(
                   color: Colors.white,
@@ -554,7 +552,10 @@ class _SignUpPageState extends State<SignUpPage> {
                   ),
                 ),
                 child: Padding(
-                  padding: const EdgeInsets.all(30),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 30,
+                    vertical: 70,
+                  ),
                   child: Column(
                     children: [
                       const SizedBox(height: 20),
@@ -563,20 +564,21 @@ class _SignUpPageState extends State<SignUpPage> {
                         hintText: "Username",
                         icon: Icons.verified_user,
                       ),
-                      const SizedBox(height: 15),
+                      const SizedBox(height: 30),
                       _buildInputField(
                         controller: _mobileController,
                         hintText: "Mobile Number",
                         icon: Icons.phone,
                         inputType: TextInputType.phone,
                       ),
-                      const SizedBox(height: 15),
+                      const SizedBox(height: 30),
                       _buildInputField(
                         controller: _emailController,
                         hintText: "Email ",
                         icon: Icons.mail,
-                        inputType: TextInputType.phone,
+                        inputType: TextInputType.emailAddress,
                       ),
+                      const SizedBox(height: 20),
 
                       FadeInDown(
                         duration: const Duration(milliseconds: 600),
@@ -613,12 +615,13 @@ class _SignUpPageState extends State<SignUpPage> {
                               await UserSession.saveUserphonenumber(
                                 _mobileController.text,
                               );
+                              await UserSession.saveUsername(
+                                _usernameController.text,
+                              );
 
                               Navigator.pushReplacement(
                                 context,
-                                MaterialPageRoute(
-                                  builder: (_) => InfuMedzApp(),
-                                ),
+                                MaterialPageRoute(builder: (_) => MainShell()),
                               );
                             } else {
                               ScaffoldMessenger.of(context).showSnackBar(
@@ -694,11 +697,18 @@ class _SignUpPageState extends State<SignUpPage> {
 class UserSession {
   static const _keyUserId = "user_id";
   static const _keyUseremail = "user_mail";
+  static const _keyUsername = "user_name";
   static const _keyUserphonenumber = "user_phonenumber";
 
+  // ---------- SAVE ----------
   static Future<void> saveUserId(String userId) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(_keyUserId, userId);
+  }
+
+  static Future<void> saveUsername(String username) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_keyUsername, username); // ✅ FIXED
   }
 
   static Future<void> saveUseremail(String useremail) async {
@@ -706,14 +716,20 @@ class UserSession {
     await prefs.setString(_keyUseremail, useremail);
   }
 
-  static Future<void> saveUserphonenumber(String userphonenumber) async {
+  static Future<void> saveUserphonenumber(String phone) async {
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(_keyUserphonenumber, userphonenumber);
+    await prefs.setString(_keyUserphonenumber, phone);
   }
 
+  // ---------- GET ----------
   static Future<String?> getUserId() async {
     final prefs = await SharedPreferences.getInstance();
     return prefs.getString(_keyUserId);
+  }
+
+  static Future<String?> getUsername() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString(_keyUsername);
   }
 
   static Future<String?> getUseremail() async {
@@ -726,10 +742,9 @@ class UserSession {
     return prefs.getString(_keyUserphonenumber);
   }
 
+  // ---------- LOGOUT ----------
   static Future<void> logout() async {
     final prefs = await SharedPreferences.getInstance();
-    await prefs.remove(_keyUserId);
-    await prefs.remove(_keyUseremail);
-    await prefs.remove(_keyUserphonenumber);
+    await prefs.clear();
   }
 }
