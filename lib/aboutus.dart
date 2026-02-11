@@ -9,7 +9,7 @@ class AboutUsScreen extends StatelessWidget {
       backgroundColor: const Color(0xFFF6F8FC),
       appBar: AppBar(
         title: const Text(
-          "About InfusionMedz",
+          "About Us",
           style: TextStyle(fontWeight: FontWeight.w700),
         ),
         backgroundColor: Colors.white,
@@ -200,15 +200,24 @@ class _ContactSection extends StatelessWidget {
         children: [
           _infoRow("Website", "www.infusionmedz.com"),
           _infoRow("Email", "infusionmedzzone@gmail.com"),
-          _infoRow("Phone", "8125769855 / 9381740718 / 9700037229"),
+          _infoRow("Phone", "8125769855 / 9381740718 "),
           const SizedBox(height: 12),
           Text(
             "Registered Company: INFUMEDZ MEDICAL AND EDUCATION ZONE LLP\n"
             "Government of India | LLP Identification Number: ACL-4707",
             style: TextStyle(
-              fontSize: 13,
+              fontSize: 10,
               color: Colors.grey.shade700,
               height: 1.5,
+            ),
+          ),
+          const SizedBox(height: 8),
+
+          Center(
+            child: Text(
+              "© 2026 INFUMEDZ. All rights reserved.",
+              textAlign: TextAlign.center,
+              style: TextStyle(fontSize: 9, color: Colors.grey.shade600),
             ),
           ),
         ],

@@ -1210,7 +1210,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                     );
                   },
                   child: Container(
-                    padding: const EdgeInsets.all(14),
+                    padding: const EdgeInsets.all(10),
                     decoration: BoxDecoration(
                       borderRadius: BorderRadius.circular(14),
                       gradient: const LinearGradient(
@@ -1229,30 +1229,34 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        // Container(
-                        //   height: 42,
-                        //   width: 42,
-                        //   decoration: BoxDecoration(
-                        //     color: const Color(0xFF0E5FD8).withOpacity(0.12),
-                        //     borderRadius: BorderRadius.circular(12),
-                        //   ),
-                        //   child: const Icon(
-                        //     Icons.school,
-                        //     size: 22,
-                        //     color: Color(0xFF0E5FD8),
-                        //   ),
-                        // ),
-                        const Spacer(),
-
-                        const Text(
-                          "Research \n Assistance",
-                          style: TextStyle(
-                            fontSize: 15,
-                            fontWeight: FontWeight.w700,
-                            color: Color(0xFF1F3C68),
+                        Center(
+                          child: Container(
+                            height: 42,
+                            width: 42,
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF0E5FD8).withOpacity(0.12),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: const Icon(
+                              Icons.school,
+                              size: 22,
+                              color: Color(0xFF0E5FD8),
+                            ),
                           ),
                         ),
-                        const SizedBox(height: 4),
+
+                        const Spacer(),
+
+                        Center(
+                          child: const Text(
+                            "Research \nAssistance",
+                            style: TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w700,
+                              color: Color(0xFF1F3C68),
+                            ),
+                          ),
+                        ),
                       ],
                     ),
                   ),
@@ -1289,36 +1293,32 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Container(
-                          height: 42,
-                          width: 42,
-                          decoration: BoxDecoration(
-                            color: const Color(0xFF0E5FD8).withOpacity(0.12),
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: const Icon(
-                            Icons.info_outline,
-                            size: 22,
-                            color: Color(0xFF0E5FD8),
+                        Center(
+                          child: Container(
+                            height: 42,
+                            width: 42,
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF0E5FD8).withOpacity(0.12),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: const Icon(
+                              Icons.info_outline,
+                              size: 22,
+                              color: Color(0xFF0E5FD8),
+                            ),
                           ),
                         ),
 
                         const Spacer(),
 
-                        const Text(
-                          "About InfuMedz",
-                          style: TextStyle(
-                            fontSize: 15,
-                            fontWeight: FontWeight.w700,
-                            color: Color(0xFF1F3C68),
-                          ),
-                        ),
-                        const SizedBox(height: 4),
-                        const Text(
-                          "Know our mission",
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: Color(0xFF1F3C68),
+                        Center(
+                          child: const Text(
+                            "About InfuMedz",
+                            style: TextStyle(
+                              fontSize: 15,
+                              fontWeight: FontWeight.w700,
+                              color: Color(0xFF1F3C68),
+                            ),
                           ),
                         ),
                       ],
@@ -1327,6 +1327,8 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                 ),
               ],
             ),
+
+            SizedBox(height: 10),
 
             GridView.builder(
               shrinkWrap: true,
