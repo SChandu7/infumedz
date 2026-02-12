@@ -117,30 +117,35 @@ class _FoundersSection extends StatelessWidget {
           name: "Dr. Akif Baig",
           role: "CEO, Founder & Content Head",
           education: "MBBS, DNB (Gen Med), DM (Cardiology)",
+          imageUrl: "assets/infumedz1.jpg",
         ),
 
         _TeamCard(
           name: "Dr. M. A. Sameena Farheen",
           role: "Founder & Content Writer / Editor",
           education: "MBBS, MD (General Medicine)",
+          imageUrl: "assets/infumedz2.jpg",
         ),
 
         _TeamCard(
           name: "Shaik Tameema Nawaz",
           role: "CTO, Founder & Customer Excellence Lead",
           education: "Technology & Operations",
+          imageUrl: "assets/infumedz3.jpg",
         ),
 
         _TeamCard(
           name: "Dr. Harika Puligolla",
           role: "Co-Founder & Educator",
           education: "MBBS, DNB (Radiation Oncology)",
+          imageUrl: "assets/logo.png",
         ),
 
         _TeamCard(
           name: "Dr. P. Srikanth Reddy",
           role: "Educator & Marketing Head",
           education: "MBBS, MD (General Medicine)",
+          imageUrl: "assets/logo2.png",
         ),
       ],
     );
@@ -174,12 +179,14 @@ class _ContentTeamSection extends StatelessWidget {
           name: "Dr. Nikhila Reddy",
           role: "Content Writer & Educator",
           education: "MBBS",
+          imageUrl: "assets/logo2.png",
         ),
 
         _TeamCard(
           name: "Dr. Chaithanya Reddy",
           role: "Content Writer & Educator",
           education: "MBBS",
+          imageUrl: "assets/logo2.png",
         ),
       ],
     );
@@ -307,50 +314,88 @@ class _TeamCard extends StatelessWidget {
   final String name;
   final String role;
   final String education;
+  final String? imageUrl; // optional image
 
   const _TeamCard({
     required this.name,
     required this.role,
     required this.education,
+    this.imageUrl,
   });
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(14),
+      margin: const EdgeInsets.only(bottom: 18),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: const Color(0xFFE2E8F0)),
-      ),
-      child: Row(
-        children: [
-          const CircleAvatar(
-            radius: 26,
-            backgroundColor: Color(0xFF0E5FD8),
-            child: Icon(Icons.person, color: Colors.white),
+        borderRadius: BorderRadius.circular(18),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.06),
+            blurRadius: 16,
+            offset: const Offset(0, 8),
           ),
-          const SizedBox(width: 14),
-          Expanded(
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          /// 🔹 LARGE RECTANGULAR IMAGE
+          ClipRRect(
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(18)),
+            child: imageUrl != null
+                ? Image.asset(
+                    imageUrl!,
+                    height: 250,
+                    width: double.infinity,
+                    fit: BoxFit.fill,
+                  )
+                : Container(
+                    height: 250,
+                    width: double.infinity,
+                    decoration: const BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: [Color(0xFF0E5FD8), Color(0xFF4F46E5)],
+                      ),
+                    ),
+                    child: const Icon(
+                      Icons.person,
+                      size: 70,
+                      color: Colors.white,
+                    ),
+                  ),
+          ),
+
+          /// 🔹 DETAILS SECTION
+          Padding(
+            padding: const EdgeInsets.fromLTRB(18, 16, 18, 18),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
                   name,
                   style: const TextStyle(
-                    fontSize: 15,
-                    fontWeight: FontWeight.w700,
+                    fontSize: 18,
+                    fontWeight: FontWeight.w800,
+                    color: Color(0xFF1F3C68),
                   ),
                 ),
-                const SizedBox(height: 2),
+                const SizedBox(height: 6),
+
                 Text(
                   role,
-                  style: TextStyle(fontSize: 13, color: Colors.grey.shade700),
+                  style: const TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    color: Color(0xFF0E5FD8),
+                  ),
                 ),
+                const SizedBox(height: 8),
+
                 Text(
                   education,
-                  style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+                  style: TextStyle(fontSize: 13, color: Colors.grey.shade700),
                 ),
               ],
             ),

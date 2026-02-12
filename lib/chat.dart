@@ -36,9 +36,30 @@ class _UserChatScreenState extends State<UserChatScreen> {
     );
 
     if (res.statusCode == 200) {
-      setState(() {
-        messages = jsonDecode(res.body);
-      });
+      final history = jsonDecode(res.body);
+
+      if (history.isEmpty) {
+        // 👇 Inject Welcome Message
+        messages = [
+          {
+            "message":
+                "👋 Welcome to InfuMedz Academic Support!\n\n"
+                "InfuMedz is a dedicated medical learning platform helping MBBS, MD/MS and DM/DrNB students with structured courses, clinical discussions and academic resources.\n\n"
+                "You can ask me about:\n"
+                "• Courses\n"
+                "• Books\n"
+                "• Academic guidance\n"
+                "• Technical issues\n\n"
+                "How can I assist you today?",
+            "message_type": "BOT",
+          },
+        ];
+      } else {
+        messages = history;
+      }
+
+      setState(() {});
+
       WidgetsBinding.instance.addPostFrameCallback((_) {
         _scrollToBottom();
       });
@@ -264,19 +285,12 @@ class _UserChatScreenState extends State<UserChatScreen> {
         children: [
           /// CHAT AREA
           Expanded(
-            child: messages.isEmpty
-                ? const Center(
-                    child: Text(
-                      "Ask your academic question below",
-                      style: TextStyle(color: Colors.black54),
-                    ),
-                  )
-                : ListView.builder(
-                    controller: _scrollController,
-                    padding: const EdgeInsets.all(12),
-                    itemCount: messages.length,
-                    itemBuilder: (_, i) => buildMessage(messages[i]),
-                  ),
+            child: ListView.builder(
+              controller: _scrollController,
+              padding: const EdgeInsets.all(12),
+              itemCount: messages.length,
+              itemBuilder: (_, i) => buildMessage(messages[i]),
+            ),
           ),
 
           /// INPUT BAR

@@ -41,6 +41,8 @@ dependencies:
   image_picker: ^1.0.8
   flutter_file_dialog: ^3.0.2
   permission_handler: ^12.0.1
+ 
+
   dio: ^5.9.1
   chewie: ^1.7.4
   provider: ^6.0.5

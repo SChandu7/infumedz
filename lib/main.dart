@@ -221,7 +221,18 @@ class _MainShellState extends State<MainShell> {
         // ✅ FAB ONLY FOR ADMIN TAB
         floatingActionButton: index == 3 && _isAdmin
             ? AdminExpandableFab()
-            : null,
+            : FloatingActionButton(
+                backgroundColor: const Color.fromARGB(255, 116, 167, 239),
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute<void>(
+                      builder: (context) => UserChatScreen(),
+                    ),
+                  );
+                },
+                child: const Icon(Icons.help_center),
+              ),
 
         floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
 
@@ -290,14 +301,15 @@ class _AdminExpandableFabState extends State<AdminExpandableFab> {
           right: 16,
           child: Column(
             children: [
-              _staggeredFabOption(3, Icons.add, "Add Courses"),
-              _staggeredFabOption(2, Icons.picture_as_pdf, "Add Books"),
-              _staggeredFabOption(1, Icons.delete, "Delete Content"),
+              _staggeredFabOption(4, Icons.add, "Add Courses"),
+              _staggeredFabOption(3, Icons.picture_as_pdf, "Add Books"),
+              _staggeredFabOption(2, Icons.delete, "Delete Content"),
               _staggeredFabOption(
-                0,
+                1,
                 Icons.published_with_changes,
                 "Update Banner",
               ),
+              _staggeredFabOption(0, Icons.delete, "Chat Settings"),
             ],
           ),
         ),
@@ -347,6 +359,11 @@ class _AdminExpandableFabState extends State<AdminExpandableFab> {
                 showDialog(
                   context: context,
                   builder: (_) => const AdminDeleteDialog(),
+                );
+              } else if (label == "Chat Settings") {
+                showDialog(
+                  context: context,
+                  builder: (_) =>  AdminDashboardScreen(),
                 );
               } else {
                 Navigator.push(
@@ -1284,7 +1301,9 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                   onTap: () {
                     Navigator.push(
                       context,
-                      MaterialPageRoute(builder: (_) => AdminDashboardScreen()),
+                      MaterialPageRoute(
+                        builder: (_) => ThesisAssistanceScreen(),
+                      ),
                     );
                   },
                   child: Container(
@@ -1346,7 +1365,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                     Navigator.push(
                       context,
                       MaterialPageRoute<void>(
-                        builder: (context) => UserChatScreen(),
+                        builder: (context) => AboutUsScreen(),
                       ),
                     );
                     // TODO: Navigate to About Screen

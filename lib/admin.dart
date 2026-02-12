@@ -6,6 +6,7 @@ import 'package:http/http.dart' as http;
 import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:file_picker/file_picker.dart';
+import 'package:infumedz/chat.dart';
 import 'dart:async';
 import 'package:infumedz/views.dart';
 import 'package:infumedz/main.dart';
@@ -1385,6 +1386,12 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
                         color: Color(0xFF0E5FD8),
                       ),
                       onPressed: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute<void>(
+                            builder: (context) => AdminDashboardScreen(),
+                          ),
+                        );
                         // TODO: open admin notifications
                       },
                     ),
