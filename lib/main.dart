@@ -4,8 +4,12 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:image_picker/image_picker.dart';
 import 'package:flutter_file_dialog/flutter_file_dialog.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
+
 import 'package:flutter/services.dart';
 import 'package:infumedz/aboutus.dart';
+import 'package:infumedz/chat.dart';
 import 'package:infumedz/loginsignup.dart';
 import 'package:infumedz/user.dart';
 import 'dart:async';
@@ -13,7 +17,7 @@ import 'package:infumedz/views.dart';
 import 'package:video_player/video_player.dart';
 import 'admin.dart';
 import 'cart.dart';
-import 'explore.dart';
+import 'explore.dart' hide UserChatScreen;
 import 'thesis.dart';
 import 'library.dart';
 import "splash.dart";
@@ -36,8 +40,15 @@ class ApiConfig {
       "http://13.203.219.206:8000/api/infumedz/upload/cofassurse-thumbnail/";
 }
 
-void main() {
+Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
+  await Firebase.initializeApp();
+}
+
+Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await Firebase.initializeApp();
+
+  FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
 
   SystemChrome.setSystemUIOverlayStyle(
     const SystemUiOverlayStyle(
@@ -52,6 +63,8 @@ void main() {
       statusBarIconBrightness: Brightness.dark,
     ),
   );
+  WidgetsFlutterBinding.ensureInitialized();
+  await Firebase.initializeApp();
   runApp(const InfuMedzApp());
 }
 
@@ -91,6 +104,35 @@ class _MainShellState extends State<MainShell> {
   void initState() {
     super.initState();
     _loadSession();
+    initFCM();
+  }
+
+  Future<void> initFCM() async {
+    FirebaseMessaging messaging = FirebaseMessaging.instance;
+
+    // 🔔 Ask permission (Android 13+)
+    NotificationSettings settings = await messaging.requestPermission(
+      alert: true,
+      badge: true,
+      sound: true,
+    );
+
+    print("Permission: ${settings.authorizationStatus}");
+
+    // 🔔 Foreground listener
+    FirebaseMessaging.onMessage.listen((RemoteMessage message) {
+      print("Foreground Notification Received");
+
+      if (message.notification != null) {
+        showDialog(
+          context: context,
+          builder: (_) => AlertDialog(
+            title: Text(message.notification!.title ?? ""),
+            content: Text(message.notification!.body ?? ""),
+          ),
+        );
+      }
+    });
   }
 
   Future<void> _loadSession() async {
@@ -509,34 +551,14 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
   List<Map<String, dynamic>> popularCourses = [];
   List<Map<String, dynamic>> popularBooks = [];
 
-  final List<Map<String, String>> notifications = [
-    {
-      "title": "MD Medicine – Clinical Q&A Series",
-      "time": "Yesterday",
-      "msg": "Course updated with 10 new videos.",
-    },
-    {
-      "title": "Essentials of Cardiology – DM & DrNB Notes",
-      "time": "2 hrs ago",
-      "msg": "New Books list available. Check  now.",
-    },
-
-    {
-      "title": "MBBS Anatomy – Video & Notes",
-      "time": "2 days ago",
-      "msg": "Newly Launched Course! Enroll today.",
-    },
-    {
-      "title": "Radiology – Image Based Question & Answer Book",
-      "time": "3 days ago",
-      "msg": "Special discount on selected books.",
-    },
-  ];
+  List notifications = [];
+  bool isLoadingNotifications = true;
 
   @override
   void initState() {
     super.initState();
     _initHomeData();
+    loadNotifications();
 
     _marqueeController = AnimationController(
       duration: const Duration(seconds: 22), // slower & smoother
@@ -557,6 +579,22 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     _controller.dispose();
 
     super.dispose();
+  }
+
+  Future<void> loadNotifications() async {
+    final userId = await UserSession.getUserId();
+
+    final res = await http.get(
+      Uri.parse("https://api.chandus7.in/api/infumedz/notifications/$userId/"),
+    );
+    print(res.body);
+
+    if (res.statusCode == 200) {
+      setState(() {
+        notifications = jsonDecode(res.body);
+        isLoadingNotifications = false;
+      });
+    }
   }
 
   Future<void> _initHomeData() async {
@@ -726,7 +764,9 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
 
                   //    const SizedBox(height: 8),
                   Expanded(
-                    child: notifications.isEmpty
+                    child: isLoadingNotifications
+                        ? Center(child: CircularProgressIndicator())
+                        : notifications.isEmpty
                         ? const Center(
                             child: Text(
                               "No notifications yet",
@@ -782,7 +822,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                                           ),
                                           const SizedBox(height: 4),
                                           Text(
-                                            item["msg"]!,
+                                            item["message"]!,
                                             style: TextStyle(
                                               fontSize: 12,
                                               height: 1.25,
@@ -1010,23 +1050,63 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
 
                 // RIGHT: NOTIFICATION / PROFILE
                 InkWell(
-                  onTap: _showNotificationPanel,
-                  child: Container(
-                    padding: const EdgeInsets.all(2),
-                    decoration: const BoxDecoration(
-                      shape: BoxShape.circle,
-                      gradient: LinearGradient(
-                        colors: [Color(0xFF4F46E5), Color(0xFF06B6D4)],
+                  onTap: () {
+                    _showNotificationPanel();
+                    setState(() {
+                      // Optional: clear badge after opening
+                      // notifications.clear();
+                    });
+                  },
+                  child: Stack(
+                    clipBehavior: Clip.none,
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(2),
+                        decoration: const BoxDecoration(
+                          shape: BoxShape.circle,
+                          gradient: LinearGradient(
+                            colors: [Color(0xFF4F46E5), Color(0xFF06B6D4)],
+                          ),
+                        ),
+                        child: const CircleAvatar(
+                          radius: 20,
+                          backgroundColor: Colors.white,
+                          child: Icon(
+                            Icons.notifications_none_rounded,
+                            color: Colors.black87,
+                          ),
+                        ),
                       ),
-                    ),
-                    child: const CircleAvatar(
-                      radius: 20,
-                      backgroundColor: Colors.white,
-                      child: Icon(
-                        Icons.notifications_none_rounded,
-                        color: Colors.black87,
-                      ),
-                    ),
+
+                      /// 🔴 BADGE
+                      if (!isLoadingNotifications && notifications.isNotEmpty)
+                        Positioned(
+                          right: -2,
+                          top: -2,
+                          child: Container(
+                            padding: const EdgeInsets.all(5),
+                            decoration: const BoxDecoration(
+                              color: Colors.red,
+                              shape: BoxShape.circle,
+                            ),
+                            constraints: const BoxConstraints(
+                              minWidth: 20,
+                              minHeight: 20,
+                            ),
+                            child: Text(
+                              notifications.length > 9
+                                  ? "9+"
+                                  : notifications.length.toString(),
+                              textAlign: TextAlign.center,
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 11,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                        ),
+                    ],
                   ),
                 ),
               ],
@@ -1204,9 +1284,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                   onTap: () {
                     Navigator.push(
                       context,
-                      MaterialPageRoute(
-                        builder: (_) => ThesisAssistanceScreen(),
-                      ),
+                      MaterialPageRoute(builder: (_) => AdminDashboardScreen()),
                     );
                   },
                   child: Container(
@@ -1268,7 +1346,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                     Navigator.push(
                       context,
                       MaterialPageRoute<void>(
-                        builder: (context) => const AboutUsScreen(),
+                        builder: (context) => UserChatScreen(),
                       ),
                     );
                     // TODO: Navigate to About Screen

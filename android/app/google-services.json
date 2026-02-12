@@ -1,0 +1,48 @@
+{
+  "project_info": {
+    "project_number": "300753188941",
+    "project_id": "infusionmedzapp",
+    "storage_bucket": "infusionmedzapp.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:300753188941:android:6c3ba4363699c7ff894404",
+        "android_client_info": {
+          "package_name": "com.example.infumedz"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyA3TCsxKycwD97n2P_fIWXf626cl1q017A"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:300753188941:android:f020703ebdc26030894404",
+        "android_client_info": {
+          "package_name": "com.infumedz.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyA3TCsxKycwD97n2P_fIWXf626cl1q017A"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

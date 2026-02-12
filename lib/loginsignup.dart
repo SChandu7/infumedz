@@ -5,6 +5,8 @@ import 'package:flutter/material.dart';
 import 'package:animate_do/animate_do.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:flutter_keyboard_visibility/flutter_keyboard_visibility.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'main.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
@@ -137,6 +139,20 @@ class _LoginPageState extends State<LoginPage> {
 
   String error = '';
   bool isLoading = false;
+
+  Future<void> saveFCMToken() async {
+    final userId = await UserSession.getUserId();
+
+    String? token = await FirebaseMessaging.instance.getToken();
+
+    if (token != null && userId != null) {
+      await http.post(
+        Uri.parse("https://api.chandus7.in/api/infumedz/save-device-token/"),
+        headers: {"Content-Type": "application/json"},
+        body: jsonEncode({"user_id": userId, "token": token}),
+      );
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -390,6 +406,8 @@ class _LoginPageState extends State<LoginPage> {
                                             data2["phone"],
                                           );
                                         }
+
+                                        saveFCMToken();
 
                                         // ✅ NAVIGATE
                                         Navigator.pushReplacement(

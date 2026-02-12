@@ -698,6 +698,14 @@ class CourseDetailScreen extends StatefulWidget {
 
 class _CourseDetailScreenState extends State<CourseDetailScreen> {
   bool isPlaying = false;
+  double averageRating = 0;
+  int totalReviews = 0;
+  List<dynamic> reviewList = [];
+
+  int selectedRating = 5;
+  TextEditingController reviewController = TextEditingController();
+  bool isSubmittingReview = false;
+
   bool get isBook => widget.option == "Books";
   String _getYoutubeThumbnail(String url) {
     if (url.isEmpty || !url.contains("youtu")) return "";
@@ -753,7 +761,71 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
       );
     }
 
+    fetchReviews();
+
     super.initState();
+  }
+
+  Future<void> submitReview() async {
+    final userId = await UserSession.getUserId();
+
+    if (userId == null) {
+      Navigator.push(context, MaterialPageRoute(builder: (_) => LoginPage()));
+      return;
+    }
+
+    if (reviewController.text.trim().isEmpty) return;
+
+    setState(() => isSubmittingReview = true);
+
+    final url = isBook
+        ? "https://api.chandus7.in/api/infumedz/book/review/add/"
+        : "https://api.chandus7.in/api/infumedz/course/review/add/";
+
+    final body = isBook
+        ? {
+            "user_id": userId,
+            "book_id": widget.data["id"],
+            "rating": selectedRating,
+            "comment": reviewController.text.trim(),
+          }
+        : {
+            "user_id": userId,
+            "course_id": widget.data["id"],
+            "rating": selectedRating,
+            "comment": reviewController.text.trim(),
+          };
+
+    final res = await http.post(
+      Uri.parse(url),
+      headers: {"Content-Type": "application/json"},
+      body: jsonEncode(body),
+    );
+
+    setState(() => isSubmittingReview = false);
+
+    if (res.statusCode == 200) {
+      reviewController.clear();
+      fetchReviews();
+    }
+  }
+
+  Future<void> fetchReviews() async {
+    final url = isBook
+        ? "https://api.chandus7.in/api/infumedz/book/${widget.data["id"]}/reviews/"
+        : "https://api.chandus7.in/api/infumedz/course/${widget.data["id"]}/reviews/";
+
+    final res = await http.get(Uri.parse(url));
+
+    if (res.statusCode == 200) {
+      final data = jsonDecode(res.body);
+
+      setState(() {
+        averageRating = data["average_rating"];
+        totalReviews = data["total_reviews"];
+        reviewList = data["reviews"];
+      });
+    }
   }
 
   late Razorpay _razorpay;
@@ -1274,6 +1346,162 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
                   const _BulletPoint(
                     text: "Access curated PDFs, videos, and revision materials",
                   ),
+
+                  SizedBox(height: 10),
+                  const SizedBox(height: 30),
+
+                  /// ⭐ REVIEWS SECTION
+                  const Text(
+                    "Ratings & Reviews",
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
+                  ),
+
+                  const SizedBox(height: 10),
+
+                  Row(
+                    children: [
+                      Icon(Icons.star, color: Colors.amber, size: 22),
+                      const SizedBox(width: 6),
+                      Text(
+                        averageRating.toString(),
+                        style: const TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const SizedBox(width: 6),
+                      Text(
+                        "($totalReviews reviews)",
+                        style: const TextStyle(color: Colors.black54),
+                      ),
+                    ],
+                  ),
+
+                  /// COMMENT LIST
+                  ListView.builder(
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    itemCount: reviewList.length,
+                    itemBuilder: (context, index) {
+                      final review = reviewList[index];
+
+                      return Container(
+                        margin: const EdgeInsets.only(bottom: 12),
+                        padding: const EdgeInsets.all(14),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                const Icon(Icons.account_circle, size: 28),
+                                const SizedBox(width: 8),
+                                Text(
+                                  review["user_name"],
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 6),
+
+                            Row(
+                              children: List.generate(
+                                review["rating"],
+                                (i) => const Icon(
+                                  Icons.star,
+                                  color: Colors.amber,
+                                  size: 16,
+                                ),
+                              ),
+                            ),
+
+                            const SizedBox(height: 6),
+
+                            Text(review["comment"]),
+                          ],
+                        ),
+                      );
+                    },
+                  ),
+
+                  /// ADD REVIEW BOX
+                  Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(12),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.05),
+                          blurRadius: 8,
+                        ),
+                      ],
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          "Write a Review",
+                          style: TextStyle(fontWeight: FontWeight.w700),
+                        ),
+                        const SizedBox(height: 2),
+
+                        Row(
+                          children: List.generate(5, (index) {
+                            return IconButton(
+                              icon: Icon(
+                                index < selectedRating
+                                    ? Icons.star
+                                    : Icons.star_border,
+                                color: Colors.amber,
+                              ),
+                              onPressed: () {
+                                setState(() => selectedRating = index + 1);
+                              },
+                            );
+                          }),
+                        ),
+
+                        TextField(
+                          controller: reviewController,
+                          maxLines: 3,
+                          decoration: InputDecoration(
+                            hintText: "Share your experience...",
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                          ),
+                        ),
+
+                        const SizedBox(height: 10),
+
+                        ElevatedButton(
+                          onPressed: isSubmittingReview ? null : submitReview,
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color.fromARGB(
+                              255,
+                              128,
+                              132,
+                              216,
+                            ),
+                          ),
+                          child: isSubmittingReview
+                              ? const CircularProgressIndicator(
+                                  color: Colors.white,
+                                )
+                              : const Text(
+                                  "Submit Review",
+                                  style: TextStyle(color: Colors.white),
+                                ),
+                        ),
+                      ],
+                    ),
+                  ),
                 ],
               ),
             ),
@@ -1560,6 +1788,233 @@ class YoutubeStyleCourseCard3 extends StatelessWidget {
               },
               itemBuilder: (context) => [],
             ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class UserChatScreen extends StatefulWidget {
+  @override
+  _UserChatScreenState createState() => _UserChatScreenState();
+}
+
+class _UserChatScreenState extends State<UserChatScreen> {
+  List<Map<String, dynamic>> messages = [];
+  TextEditingController controller = TextEditingController();
+
+  @override
+  void initState() {
+    super.initState();
+    loadHistory();
+  }
+
+  Future<void> loadHistory() async {
+    final userId = await UserSession.getUserId();
+
+    final res = await http.get(
+      Uri.parse("https://api.chandus7.in/api/infumedz/chat/history/$userId/"),
+    );
+
+    if (res.statusCode == 200) {
+      setState(() {
+        messages = List<Map<String, dynamic>>.from(jsonDecode(res.body));
+      });
+    }
+  }
+
+  Future<void> sendMessage() async {
+    final userId = await UserSession.getUserId();
+    final text = controller.text.trim();
+    if (text.isEmpty) return;
+
+    controller.clear();
+
+    final res = await http.post(
+      Uri.parse("https://api.chandus7.in/api/infumedz/chat/message/"),
+      headers: {"Content-Type": "application/json"},
+      body: jsonEncode({"user_id": userId, "message": text}),
+    );
+
+    final data = jsonDecode(res.body);
+
+    setState(() {
+      messages.add({"message": text, "type": "USER"});
+    });
+
+    if (data["type"] == "BOT") {
+      setState(() {
+        messages.add({"message": data["reply"], "type": "BOT"});
+      });
+    } else {
+      showEscalateDialog(text);
+    }
+  }
+
+  void showEscalateDialog(String message) {
+    showDialog(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: Text("Contact Support?"),
+        content: Text("Would you like to send this to admin support?"),
+        actions: [
+          TextButton(
+            onPressed: () async {
+              Navigator.pop(context);
+
+              await http.post(
+                Uri.parse(
+                  "https://api.chandus7.in/api/infumedz/support/create/",
+                ),
+                headers: {"Content-Type": "application/json"},
+                body: jsonEncode({
+                  "user_id": await UserSession.getUserId(),
+                  "message": message,
+                }),
+              );
+            },
+            child: Text("Yes"),
+          ),
+        ],
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: Text("InfuMedz Support")),
+      body: Column(
+        children: [
+          Expanded(
+            child: ListView.builder(
+              itemCount: messages.length,
+              itemBuilder: (context, index) {
+                final msg = messages[index];
+
+                bool isUser = msg["type"] == "USER";
+
+                return Align(
+                  alignment: isUser
+                      ? Alignment.centerRight
+                      : Alignment.centerLeft,
+                  child: Container(
+                    margin: EdgeInsets.all(8),
+                    padding: EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: isUser ? Color(0xFF0E5FD8) : Colors.grey.shade200,
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Text(
+                      msg["message"],
+                      style: TextStyle(
+                        color: isUser ? Colors.white : Colors.black,
+                      ),
+                    ),
+                  ),
+                );
+              },
+            ),
+          ),
+          Row(
+            children: [
+              Expanded(child: TextField(controller: controller)),
+              IconButton(icon: Icon(Icons.send), onPressed: sendMessage),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class AdminTicketListScreen extends StatefulWidget {
+  @override
+  _AdminTicketListScreenState createState() => _AdminTicketListScreenState();
+}
+
+class _AdminTicketListScreenState extends State<AdminTicketListScreen> {
+  List tickets = [];
+
+  @override
+  void initState() {
+    super.initState();
+    loadTickets();
+  }
+
+  Future<void> loadTickets() async {
+    final res = await http.get(
+      Uri.parse("https://api.chandus7.in/api/infumedz/support/tickets/"),
+    );
+
+    if (res.statusCode == 200) {
+      setState(() {
+        tickets = jsonDecode(res.body);
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: Text("Support Tickets")),
+      body: ListView.builder(
+        itemCount: tickets.length,
+        itemBuilder: (_, index) {
+          final ticket = tickets[index];
+
+          return ListTile(
+            title: Text(ticket["user_name"]),
+            subtitle: Text(ticket["message"]),
+            trailing: ticket["resolved"]
+                ? Icon(Icons.check, color: Colors.green)
+                : Icon(Icons.pending),
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => AdminReplyScreen(ticket: ticket),
+                ),
+              );
+            },
+          );
+        },
+      ),
+    );
+  }
+}
+
+class AdminReplyScreen extends StatelessWidget {
+  final Map ticket;
+  final TextEditingController replyController = TextEditingController();
+
+  AdminReplyScreen({required this.ticket});
+
+  Future<void> sendReply() async {
+    await http.post(
+      Uri.parse("https://api.chandus7.in/api/infumedz/support/reply/"),
+      headers: {"Content-Type": "application/json"},
+      body: jsonEncode({
+        "ticket_id": ticket["id"],
+        "reply": replyController.text.trim(),
+      }),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: Text("Reply")),
+      body: Padding(
+        padding: EdgeInsets.all(16),
+        child: Column(
+          children: [
+            Text("User: ${ticket["user_name"]}"),
+            SizedBox(height: 10),
+            Text(ticket["message"]),
+            TextField(controller: replyController),
+            ElevatedButton(onPressed: sendReply, child: Text("Send Reply")),
           ],
         ),
       ),
