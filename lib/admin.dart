@@ -1544,7 +1544,7 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
                     title: "Total Courses",
                     value: _statsLoading
                         ? "..."
-                        : "${_stats?.totalCourses ?? 0}",
+                        : "${(_stats?.totalCourses ?? 0) + (_stats?.totalBooks ?? 0)}",
                     icon: Icons.play_circle,
                     color: Colors.green,
                   ),

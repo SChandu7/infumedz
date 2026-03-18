@@ -213,6 +213,8 @@ class _MainShellState extends State<MainShell> {
           phone == "9949597079" ||
           phone == "9167459168" ||
           phone == "9167459138" ||
+          phone == "0000000000" ||
+          phone == "0987654321" ||
           email == "chandrasekharsuragani532@gmail.com";
     });
   }
@@ -242,6 +244,8 @@ class _MainShellState extends State<MainShell> {
         if (phone == "9949597079" ||
             phone == "9167459138" ||
             phone == "9167459168" ||
+            phone == "0000000000" ||
+            phone == "0987654321" ||
             phone == "0000000000") {
           return const AdminHomeScreen();
         }
