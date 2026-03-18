@@ -3,6 +3,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:infumedz/main.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+// track_visit.dart
+import 'dart:io';
+import 'dart:convert';
+import 'package:http/http.dart' as http;
 
 class OnboardingScreen extends StatefulWidget {
   const OnboardingScreen({super.key});
@@ -20,6 +24,7 @@ class _OnboardingScreenState extends State<OnboardingScreen>
   @override
   void initState() {
     super.initState();
+    trackAppVisit();
 
     SystemChrome.setSystemUIOverlayStyle(
       const SystemUiOverlayStyle(
@@ -41,6 +46,22 @@ class _OnboardingScreenState extends State<OnboardingScreen>
     ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeOutCubic));
 
     _controller.forward();
+  }
+
+  final String _appName = "infumedz"; // ✅ change this per app
+  // "chandus7" / "app3" / "app4" etc.
+
+  Future<void> trackAppVisit() async {
+    try {
+      print("..............-----------------------------------------000");
+      await http.post(
+        Uri.parse("https://api.chandus7.in/api/track-visit/"),
+        headers: {"Content-Type": "application/json"},
+        body: jsonEncode({"app_name": _appName}),
+      );
+    } catch (e) {
+      print("Visit tracking failed: $e");
+    }
   }
 
   @override
