@@ -1963,7 +1963,7 @@ class _DashboardMetric extends StatelessWidget {
                         child: Text(
                           value,
                           style: const TextStyle(
-                            fontSize: 22,
+                            fontSize: 16,
                             fontWeight: FontWeight.bold,
                           ),
                         ),

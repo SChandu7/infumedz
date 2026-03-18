@@ -110,7 +110,7 @@ class RecentOrder {
 class DashboardService {
   static Future<Map<String, dynamic>> fetchDashboard() async {
     final response = await http.get(
-      Uri.parse('$kBaseUrl/api/admin/dashboard/'),
+      Uri.parse('$kBaseUrl/api/infumedz/dashboard/'),
       headers: {'Content-Type': 'application/json'},
     );
 
@@ -315,7 +315,7 @@ class _AdminDashboarddetailsScreenState
               physics: const NeverScrollableScrollPhysics(),
               crossAxisSpacing: 12,
               mainAxisSpacing: 12,
-              childAspectRatio: 1.35,
+              childAspectRatio: 1.1,
               children: [
                 _statCard(
                   icon: Icons.people_alt_rounded,
@@ -507,7 +507,7 @@ class _AdminDashboarddetailsScreenState
       padding: const EdgeInsets.all(16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Container(
             padding: const EdgeInsets.all(8),
@@ -515,29 +515,29 @@ class _AdminDashboarddetailsScreenState
               color: color.withOpacity(0.15),
               borderRadius: BorderRadius.circular(10),
             ),
-            child: Icon(icon, color: color, size: 22),
+            child: Icon(icon, color: color, size: 20),
           ),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                value,
-                style: TextStyle(
-                  color: _text,
-                  fontSize: 22,
-                  fontWeight: FontWeight.w800,
-                ),
-              ),
-              const SizedBox(height: 2),
-              Text(
-                label,
-                style: const TextStyle(
-                  color: _subtext,
-                  fontSize: 12,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-            ],
+          const SizedBox(height: 8),
+          Text(
+            value,
+            style: const TextStyle(
+              color: _text,
+              fontSize: 20,
+              fontWeight: FontWeight.w800,
+            ),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis, // ← fixes overflow
+          ),
+          const SizedBox(height: 2),
+          Text(
+            label,
+            style: const TextStyle(
+              color: _subtext,
+              fontSize: 11,
+              fontWeight: FontWeight.w500,
+            ),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis, // ← fixes overflow
           ),
         ],
       ),
@@ -621,9 +621,13 @@ class _AdminDashboarddetailsScreenState
             ),
           ),
           if (showJoined)
-            Text(
-              u.joined,
-              style: const TextStyle(color: _subtext, fontSize: 11),
+            Flexible(
+              child: Text(
+                u.joined,
+                style: const TextStyle(color: _subtext, fontSize: 11),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
             ),
         ],
       ),
