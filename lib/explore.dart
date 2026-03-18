@@ -48,6 +48,11 @@ class _MedicalStoreScreenState extends State<MedicalStoreScreen> {
   bool loadingCourses = true;
   bool loadingBooks = true;
 
+  String _searchQuery = "";
+  List<Map<String, dynamic>> _searchSuggestions = [];
+  bool _isSearching = false;
+  final TextEditingController _searchController = TextEditingController();
+
   double get cartTotal {
     double total = 0;
     for (var item in CartStore.items) {
@@ -69,6 +74,26 @@ class _MedicalStoreScreenState extends State<MedicalStoreScreen> {
     fetchCategories();
     fetchCourses();
     fetchBooks();
+  }
+
+  void _onSearchChanged(String query) {
+    setState(() {
+      _searchQuery = query;
+      if (query.trim().isEmpty) {
+        _searchSuggestions = [];
+        _isSearching = false;
+      } else {
+        _isSearching = true;
+        final allItems = [...courses, ...books];
+        _searchSuggestions = allItems
+            .where(
+              (item) => (item["title"] ?? "").toString().toLowerCase().contains(
+                query.toLowerCase(),
+              ),
+            )
+            .toList();
+      }
+    });
   }
 
   Future<void> fetchCategories() async {
@@ -320,11 +345,25 @@ class _MedicalStoreScreenState extends State<MedicalStoreScreen> {
                 children: [
                   const Icon(Icons.search, color: Color(0xFF0E5FD8)),
                   const SizedBox(width: 10),
-                  const Expanded(
+                  Expanded(
                     child: TextField(
+                      controller: _searchController,
+                      onChanged: _onSearchChanged,
                       decoration: InputDecoration(
                         hintText: "Search courses, books..",
                         border: InputBorder.none,
+                        suffixIcon: _isSearching
+                            ? IconButton(
+                                icon: const Icon(
+                                  Icons.close,
+                                  color: Colors.black45,
+                                ),
+                                onPressed: () {
+                                  _searchController.clear();
+                                  _onSearchChanged("");
+                                },
+                              )
+                            : null,
                       ),
                     ),
                   ),
@@ -337,121 +376,168 @@ class _MedicalStoreScreenState extends State<MedicalStoreScreen> {
             ),
           ),
 
-          /// COURSE / BOOK TOGGLE
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 12),
-            child: Row(
-              children: ["Courses", "Books"].map((type) {
-                final active = selectedType == type;
-                return Expanded(
-                  child: GestureDetector(
-                    onTap: () => setState(() => selectedType = type),
-                    child: AnimatedContainer(
-                      duration: const Duration(milliseconds: 250),
-                      height: 44,
-                      margin: const EdgeInsets.symmetric(horizontal: 4),
-                      decoration: BoxDecoration(
-                        color: active ? const Color(0xFF0E5FD8) : Colors.white,
-                        borderRadius: BorderRadius.circular(10),
-                        border: Border.all(color: const Color(0xFFE2E8F0)),
+          /// SEARCH RESULTS or NORMAL VIEW
+          if (_isSearching) ...[
+            Expanded(
+              child: ListView.builder(
+                padding: const EdgeInsets.symmetric(horizontal: 12),
+                itemCount: _searchSuggestions.isEmpty
+                    ? 1
+                    : _searchSuggestions.length,
+                itemBuilder: (context, i) {
+                  if (_searchSuggestions.isEmpty) {
+                    return const Padding(
+                      padding: EdgeInsets.all(16),
+                      child: Text(
+                        "No results found",
+                        style: TextStyle(color: Colors.black45),
                       ),
-                      child: Center(
-                        child: Text(
-                          type,
-                          style: TextStyle(
-                            color: active ? Colors.white : Colors.black87,
-                            fontWeight: FontWeight.w600,
+                    );
+                  }
+                  final item = _searchSuggestions[i];
+                  final isBook = item.containsKey("pdfs");
+                  return ListTile(
+                    leading: Icon(
+                      isBook ? Icons.menu_book : Icons.play_circle_outline,
+                      color: const Color(0xFF0E5FD8),
+                    ),
+                    title: Text(
+                      item["title"] ?? "",
+                      style: const TextStyle(fontWeight: FontWeight.w600),
+                    ),
+                    subtitle: Text(isBook ? "Book" : "Course"),
+                    onTap: () {
+                      _searchController.clear();
+                      _onSearchChanged("");
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => CourseDetailScreen(
+                            data: item,
+                            option: isBook ? "Books" : "Courses",
+                            isLocked: true,
+                          ),
+                        ),
+                      );
+                    },
+                  );
+                },
+              ),
+            ),
+          ] else ...[
+            /// COURSE / BOOK TOGGLE
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 12),
+              child: Row(
+                children: ["Courses", "Books"].map((type) {
+                  final active = selectedType == type;
+                  return Expanded(
+                    child: GestureDetector(
+                      onTap: () => setState(() => selectedType = type),
+                      child: AnimatedContainer(
+                        duration: const Duration(milliseconds: 250),
+                        height: 44,
+                        margin: const EdgeInsets.symmetric(horizontal: 4),
+                        decoration: BoxDecoration(
+                          color: active
+                              ? const Color(0xFF0E5FD8)
+                              : Colors.white,
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(color: const Color(0xFFE2E8F0)),
+                        ),
+                        child: Center(
+                          child: Text(
+                            type,
+                            style: TextStyle(
+                              color: active ? Colors.white : Colors.black87,
+                              fontWeight: FontWeight.w600,
+                            ),
                           ),
                         ),
                       ),
                     ),
-                  ),
-                );
-              }).toList(),
+                  );
+                }).toList(),
+              ),
             ),
-          ),
-          const SizedBox(height: 16),
+            const SizedBox(height: 16),
 
-          /// CATEGORY FILTER
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-            child: Row(
-              children: [
-                const Icon(
-                  Icons.filter_alt_outlined,
-                  size: 16,
-                  color: Color(0xFF0E5FD8),
-                ),
-                const SizedBox(width: 6),
-                Text(
-                  selectedCategoryName == "All"
-                      ? "Showing $selectedType"
-                      : "Showing $selectedType for ",
-                  style: const TextStyle(fontSize: 17, color: Colors.black54),
-                ),
-
-                InkWell(
-                  onTap: _openFilterSheet,
-                  child: Text(
-                    selectedCategoryName,
-                    style: const TextStyle(
-                      fontSize: 15,
-                      fontWeight: FontWeight.bold,
-                      color: Color(0xFF0E5FD8),
+            /// CATEGORY FILTER
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              child: Row(
+                children: [
+                  const Icon(
+                    Icons.filter_alt_outlined,
+                    size: 16,
+                    color: Color(0xFF0E5FD8),
+                  ),
+                  const SizedBox(width: 6),
+                  Text(
+                    selectedCategoryName == "All"
+                        ? "Showing $selectedType"
+                        : "Showing $selectedType for ",
+                    style: const TextStyle(fontSize: 17, color: Colors.black54),
+                  ),
+                  InkWell(
+                    onTap: _openFilterSheet,
+                    child: Text(
+                      selectedCategoryName,
+                      style: const TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.bold,
+                        color: Color(0xFF0E5FD8),
+                      ),
                     ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
-          ),
 
-          /// LIST
-          Expanded(
-            child: ListView.builder(
-              padding: const EdgeInsets.all(12),
-              itemCount: data.length,
-              itemBuilder: (context, i) {
-                final item = data[i];
-                return _CourseListCard(
-                  data: {
-                    "title": item["title"],
-                    "image": item["thumbnail_url"],
-                    "price": "₹${item["price"]}",
-                    "learners": item["learners"] ?? "",
-                    "videos": item["videos"] ?? [],
-                  },
-
-                  isWishlisted: wishlistItems.contains(item),
-
-                  onTap: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => CourseDetailScreen(
-                          data: item,
-                          option: selectedType,
-                          isLocked: true,
+            /// LIST
+            Expanded(
+              child: ListView.builder(
+                padding: const EdgeInsets.all(12),
+                itemCount: data.length,
+                itemBuilder: (context, i) {
+                  final item = data[i];
+                  return _CourseListCard(
+                    data: {
+                      "title": item["title"],
+                      "image": item["thumbnail_url"],
+                      "price": "₹${item["price"]}",
+                      "learners": item["learners"] ?? "",
+                      "videos": item["videos"] ?? [],
+                    },
+                    isWishlisted: wishlistItems.contains(item),
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => CourseDetailScreen(
+                            data: item,
+                            option: selectedType,
+                            isLocked: true,
+                          ),
                         ),
-                      ),
-                    );
-                  },
-
-                  onWishlist: () {
-                    setState(() {
-                      if (wishlistItems.contains(item)) {
-                        wishlistItems.remove(item);
-                      } else {
-                        wishlistItems.add(item);
-                      }
-                    });
-                  },
-
-                  onAddToCart: () {},
-                );
-              },
+                      );
+                    },
+                    onWishlist: () {
+                      setState(() {
+                        if (wishlistItems.contains(item)) {
+                          wishlistItems.remove(item);
+                        } else {
+                          wishlistItems.add(item);
+                        }
+                      });
+                    },
+                    onAddToCart: () {},
+                  );
+                },
+              ),
             ),
-          ),
-          SizedBox(height: 65),
+            const SizedBox(height: 65),
+          ],
         ],
       ),
     );
@@ -774,7 +860,6 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
     print(widget.data);
 
     print(widget.data);
-    // TODO: implement initState
     if (widget.option == "Books") {
       widget.videos = List<Map<String, dynamic>>.from(
         widget.data["pdfs"] ?? [],
@@ -784,6 +869,13 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
         widget.data["videos"] ?? [],
       );
     }
+
+    // ✅ Sort alphabetically by title
+    widget.videos.sort((a, b) {
+      final titleA = (a["title"] ?? "").toString().toLowerCase();
+      final titleB = (b["title"] ?? "").toString().toLowerCase();
+      return titleA.compareTo(titleB);
+    });
 
     fetchReviews();
 
