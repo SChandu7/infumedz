@@ -15,6 +15,8 @@ import 'cart.dart';
 import 'main.dart';
 import 'payment.dart';
 import 'loginsignup.dart';
+import 'package:firebase_dynamic_links/firebase_dynamic_links.dart';
+import 'package:share_plus/share_plus.dart';
 
 class MedicalStoreScreen extends StatefulWidget {
   final String initialCategory; // 👈 NEW
@@ -428,7 +430,7 @@ class _MedicalStoreScreenState extends State<MedicalStoreScreen> {
                         builder: (_) => CourseDetailScreen(
                           data: item,
                           option: selectedType,
-                          isLocked: false,
+                          isLocked: true,
                         ),
                       ),
                     );
@@ -681,7 +683,7 @@ class CourseDetailScreen extends StatefulWidget {
   final Map<String, dynamic> data;
   List<Map<String, dynamic>> videos = [];
   final String option;
-  final bool isLocked;
+  bool isLocked;
 
   // ✅ FIX
 
@@ -701,6 +703,9 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
   double averageRating = 0;
   int totalReviews = 0;
   List<dynamic> reviewList = [];
+  String? _phone;
+  String? _email;
+  bool _isAdmin = false;
 
   int selectedRating = 5;
   TextEditingController reviewController = TextEditingController();
@@ -739,16 +744,35 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
     startPayment();
   }
 
+  Future<void> _loadSession() async {
+    final phone = await UserSession.getUserphonenumber();
+    final email = await UserSession.getUseremail();
+
+    setState(() {
+      _phone = phone;
+      _email = email;
+
+      _isAdmin =
+          phone == "9949597079" ||
+          phone == "9167459168" ||
+          phone == "9167459138" ||
+          email == "chandrasekharsuragani532@gmail.com";
+    });
+    if (_isAdmin) {
+      print("Admin access granted-----------------------------------------");
+      widget.isLocked = false;
+    }
+  }
+
   @override
   void initState() {
+    _loadSession();
     _razorpay = Razorpay();
 
     _razorpay.on(Razorpay.EVENT_PAYMENT_SUCCESS, _onSuccess);
     _razorpay.on(Razorpay.EVENT_PAYMENT_ERROR, _onError);
     print(widget.data);
-    print(
-      ("00000000000000000000000000000000000000000000000000000000000-----------------------"),
-    );
+
     print(widget.data);
     // TODO: implement initState
     if (widget.option == "Books") {
@@ -810,6 +834,45 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
     }
   }
 
+  Future<Map<String, dynamic>?> fetchCourseById(String id) async {
+    final res = await http.get(
+      Uri.parse("https://api.chandus7.in/api/infumedz/courses/"),
+    );
+
+    if (res.statusCode == 200) {
+      final List data = jsonDecode(res.body);
+
+      final course = data.firstWhere(
+        (item) => item["id"].toString() == id,
+        orElse: () => null,
+      );
+
+      return course;
+    }
+
+    return null;
+  }
+
+  Future<void> _shareCourse() async {
+    final String courseId = widget.data["id"].toString();
+
+    final DynamicLinkParameters parameters = DynamicLinkParameters(
+      uriPrefix: 'https://chandus7.page.link',
+      link: Uri.parse("https://chandus7.page.link/course?id=$courseId"),
+      androidParameters: const AndroidParameters(
+        packageName: "com.infumedz.app",
+        minimumVersion: 1,
+      ),
+    );
+
+    final ShortDynamicLink shortLink = await FirebaseDynamicLinks.instance
+        .buildShortLink(parameters);
+
+    final Uri shortUrl = shortLink.shortUrl;
+
+    Share.share(shortUrl.toString());
+  }
+
   Future<void> fetchReviews() async {
     final url = isBook
         ? "https://api.chandus7.in/api/infumedz/book/${widget.data["id"]}/reviews/"
@@ -868,6 +931,9 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
 
     if (res.statusCode != 200) {
       final err = jsonDecode(res.body);
+      setState(() {
+        widget.isLocked = false; // lock content on failure just in case
+      });
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(SnackBar(content: Text(err["error"] ?? "Payment failed")));
@@ -891,7 +957,7 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
       'order_id': _orderId,
       'amount': 200,
       'currency': 'INR',
-      'name': 'Chandus7 Payment',
+      'name': "Infumedz Payment",
       'description': 'UPI / Card Payment',
       'timeout': 180,
       'retry': {'enabled': false},
@@ -1011,6 +1077,12 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
         slivers: [
           /// 🔹 HERO APP BAR
           SliverAppBar(
+            actions: [
+              IconButton(
+                icon: const Icon(Icons.share, color: Colors.white),
+                onPressed: () {},
+              ),
+            ],
             backgroundColor: Colors.black,
             expandedHeight: 260,
             pinned: true,
@@ -1041,9 +1113,11 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
                       builder: (context) {
                         if (widget.videos.isNotEmpty) {
                           final String videoUrl =
-                              widget.data["video_url"]?.toString() ?? "";
+                              widget.videos.first["video_url"]?.toString() ??
+                              "";
 
                           if (videoUrl.isEmpty) {
+                            print(widget.data["video_url"]);
                             return const Center(
                               child: Text(
                                 "Invalid video URL",
@@ -1137,7 +1211,7 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
           /// 🔹 CONTENT
           SliverToBoxAdapter(
             child: Padding(
-              padding: const EdgeInsets.fromLTRB(16, 18, 16, 120),
+              padding: const EdgeInsets.fromLTRB(16, 18, 16, 20),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -1236,8 +1310,6 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
                         fontWeight: FontWeight.w700,
                       ),
                     ),
-                    const SizedBox(height: 2),
-
                     ListView.separated(
                       shrinkWrap: true,
                       physics: const NeverScrollableScrollPhysics(),
@@ -1250,11 +1322,7 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
 
                         if (isBook) {
                           // 📄 BOOK / PDF
-                          final pdfUrl = item["pdf_url"];
-                          print(pdfUrl);
-                          print(0612);
-                          // ❌ WRONG
-                          print(pdfUrl.replaceAll("%20", " "));
+
                           return YoutubeStyleCourseCard3(
                             title: title,
                             views: "Document ${index + 1}",
@@ -1263,15 +1331,17 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
                             thumbnail:
                                 "https://cdn-icons-png.flaticon.com/512/337/337946.png",
                             onTap: () {
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (_) => PdfScreen(
-                                    pdfUrl: item["pdf_url"],
-                                    title: title,
+                              if (!widget.isLocked) {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (_) => PdfScreen(
+                                      pdfUrl: item["pdf_url"],
+                                      title: title,
+                                    ),
                                   ),
-                                ),
-                              );
+                                );
+                              }
                             },
                             isBook: isBook,
                           );
@@ -1298,16 +1368,25 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
                                 );
                                 return;
                               }
-
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (_) => VideoPlayerScreen(
-                                    url: videoUrl,
-                                    title: title,
+                              if (!widget.isLocked) {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (_) => VideoPlayerScreen(
+                                      url: videoUrl,
+                                      title: title,
+                                    ),
                                   ),
-                                ),
-                              );
+                                );
+                              } else {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    content: Text(
+                                      "Buy Course to unlock content",
+                                    ),
+                                  ),
+                                );
+                              }
                             },
 
                             isBook: isBook,

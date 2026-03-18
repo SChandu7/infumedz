@@ -13,6 +13,7 @@ import 'package:infumedz/main.dart';
 import 'package:path/path.dart' as path;
 import 'package:animate_do/animate_do.dart';
 import 'loginsignup.dart';
+import 'admindashboard.dart';
 
 class AdminPanelHome extends StatelessWidget {
   const AdminPanelHome({super.key});
@@ -600,7 +601,7 @@ class _AddCourseVideoFormState extends State<AddCourseVideoForm> {
         DropdownButtonFormField<String>(
           value: courseId,
           decoration: InputDecoration(
-            labelText: "Select Course $courseId",
+            labelText: "Select Course",
             border: OutlineInputBorder(),
           ),
           items: courses.map<DropdownMenuItem<String>>((c) {
@@ -1306,6 +1307,27 @@ class _FooterLink extends StatelessWidget {
 
 class _AdminHomeScreenState extends State<AdminHomeScreen> {
   bool fabOpen = false;
+  // ADD THESE 👇
+  DashboardStats? _stats;
+  bool _statsLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadStats(); // ADD THIS
+  }
+
+  Future<void> _loadStats() async {
+    try {
+      final data = await DashboardService.fetchDashboard();
+      setState(() {
+        _stats = DashboardStats.fromJson(data['stats']);
+        _statsLoading = false;
+      });
+    } catch (_) {
+      setState(() => _statsLoading = false);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -1508,39 +1530,44 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
               const SizedBox(height: 20),
 
               /// ===== KPI ROW =====
+              // REPLACE the two Row(children: const [...]) with this:
               Row(
-                children: const [
+                children: [
                   _DashboardMetric(
                     title: "Total Users",
-                    value: "2,430",
+                    value: _statsLoading ? "..." : "${_stats?.totalUsers ?? 0}",
                     icon: Icons.people,
                     color: Colors.blue,
                   ),
-                  SizedBox(width: 12),
+                  const SizedBox(width: 12),
                   _DashboardMetric(
                     title: "Total Courses",
-                    value: "42",
+                    value: _statsLoading
+                        ? "..."
+                        : "${_stats?.totalCourses ?? 0}",
                     icon: Icons.play_circle,
                     color: Colors.green,
                   ),
                 ],
               ),
-
               const SizedBox(height: 14),
-
               Row(
-                children: const [
+                children: [
                   _DashboardMetric(
-                    title: "Orders",
-                    value: "128",
+                    title: "Buyers",
+                    value: _statsLoading
+                        ? "..."
+                        : "${_stats?.totalBuyers ?? 0}",
                     icon: Icons.shopping_cart,
                     color: Colors.orange,
                   ),
-                  SizedBox(width: 12),
+                  const SizedBox(width: 12),
                   _DashboardMetric(
-                    title: "Requests",
-                    value: "36",
-                    icon: Icons.article,
+                    title: "Revenue",
+                    value: _statsLoading
+                        ? "..."
+                        : "₹${_stats?.totalRevenue.toStringAsFixed(0) ?? 0}",
+                    icon: Icons.currency_rupee,
                     color: Colors.purple,
                   ),
                 ],
@@ -1907,39 +1934,49 @@ class _DashboardMetric extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Expanded(
-      child: Container(
-        padding: const EdgeInsets.all(16),
-        decoration: _cardDecoration(),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Column(
-              children: [
-                Row(
-                  children: [
-                    CircleAvatar(
-                      backgroundColor: color.withOpacity(0.15),
-                      child: Icon(icon, color: color),
-                    ),
-                    const SizedBox(width: 15),
+      child: InkWell(
+        onTap: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => AdminDashboarddetailsScreen()),
+          );
+          // Handle tap event
+        },
 
-                    Center(
-                      child: Text(
-                        value,
-                        style: const TextStyle(
-                          fontSize: 22,
-                          fontWeight: FontWeight.bold,
+        child: Container(
+          padding: const EdgeInsets.all(16),
+          decoration: _cardDecoration(),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Column(
+                children: [
+                  Row(
+                    children: [
+                      CircleAvatar(
+                        backgroundColor: color.withOpacity(0.15),
+                        child: Icon(icon, color: color),
+                      ),
+                      const SizedBox(width: 15),
+
+                      Center(
+                        child: Text(
+                          value,
+                          style: const TextStyle(
+                            fontSize: 22,
+                            fontWeight: FontWeight.bold,
+                          ),
                         ),
                       ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
+                    ],
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
 
-            Text(title, style: const TextStyle(color: Colors.grey)),
-          ],
+              Text(title, style: const TextStyle(color: Colors.grey)),
+            ],
+          ),
         ),
       ),
     );

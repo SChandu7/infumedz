@@ -7,12 +7,15 @@ import 'package:image_picker/image_picker.dart';
 import 'package:flutter_keyboard_visibility/flutter_keyboard_visibility.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:infumedz/user.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'main.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:http/http.dart' as http;
 import 'admin.dart';
 import 'main.dart';
+import 'package:google_sign_in/google_sign_in.dart';
+import 'googleauth.dart';
 
 class BufferPopup {
   void showBufferPopup(
@@ -479,6 +482,79 @@ class _LoginPageState extends State<LoginPage> {
                                 ),
                               ),
                               const SizedBox(height: 30),
+                              Expanded(
+                                child: FadeInUp(
+                                  duration: const Duration(milliseconds: 1700),
+                                  child: MaterialButton(
+                                    onPressed: () async {
+                                      final result = await AuthService()
+                                          .signInWithGoogle();
+
+                                      print("Google Sign-In result: $result");
+
+                                      if (result != null &&
+                                          result["error"] == null) {
+                                        await UserSession.saveUserId(
+                                          result["user_id"],
+                                        );
+                                        await UserSession.saveUsername(
+                                          result["name"],
+                                        );
+                                        await UserSession.saveUseremail(
+                                          result["email"],
+                                        ); // ✅ FIXED
+
+                                        // ✅ Navigate
+                                        Navigator.push(
+                                          context,
+                                          MaterialPageRoute(
+                                            builder: (_) => const MainShell(),
+                                          ),
+                                        );
+
+                                        // ✅ Show proper message
+                                        ScaffoldMessenger.of(
+                                          context,
+                                        ).showSnackBar(
+                                          SnackBar(
+                                            content: Text(
+                                              result["message"] +
+                                                  ".......................",
+                                            ),
+                                          ),
+                                        );
+                                      } else {
+                                        print("Error: ${result?["error"]}");
+
+                                        ScaffoldMessenger.of(
+                                          context,
+                                        ).showSnackBar(
+                                          SnackBar(
+                                            content: Text(
+                                              result?["error"] ??
+                                                  "Login failed",
+                                            ),
+                                          ),
+                                        );
+                                      }
+                                    },
+                                    height: 50,
+                                    color: Colors.black,
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(50),
+                                    ),
+                                    child: const Center(
+                                      child: Text(
+                                        "Google",
+                                        style: TextStyle(
+                                          color: Colors.white,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ),
                             ],
                           ),
                         ),

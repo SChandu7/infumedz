@@ -13,14 +13,12 @@ import 'package:infumedz/chat.dart';
 import 'package:infumedz/loginsignup.dart';
 import 'package:infumedz/user.dart';
 import 'dart:async';
-import 'package:infumedz/views.dart';
-import 'package:video_player/video_player.dart';
 import 'admin.dart';
-import 'cart.dart';
 import 'explore.dart' hide UserChatScreen;
 import 'thesis.dart';
 import 'library.dart';
 import "splash.dart";
+import 'package:firebase_dynamic_links/firebase_dynamic_links.dart';
 
 class ApiConfig {
   static const base = "http://13.203.219.206:8000";
@@ -37,7 +35,7 @@ class ApiConfig {
   static const presignedPdfUpload = "$base/upload/book/presigned/";
 
   static const uploadThumbnail =
-      "http://13.203.219.206:8000/api/infumedz/upload/cofassurse-thumbnail/";
+      "http://13.203.219.206:8000/api/infumedz/upload/course-thumbnail/";
 }
 
 Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
@@ -105,6 +103,74 @@ class _MainShellState extends State<MainShell> {
     super.initState();
     _loadSession();
     initFCM();
+    initDynamicLinks(); // ✅ ADD THIS
+  }
+
+  Future<Map<String, dynamic>?> fetchCourseById(String id) async {
+    final res = await http.get(
+      Uri.parse("https://api.chandus7.in/api/infumedz/courses/"),
+    );
+
+    if (res.statusCode == 200) {
+      final List data = jsonDecode(res.body);
+
+      final course = data.firstWhere(
+        (item) => item["id"].toString() == id,
+        orElse: () => null,
+      );
+
+      return course;
+    }
+
+    return null;
+  }
+
+  void initDynamicLinks() async {
+    // 🔥 When app is terminated
+    final initialLink = await FirebaseDynamicLinks.instance.getInitialLink();
+
+    if (initialLink != null) {
+      _handleDeepLink(initialLink.link);
+    }
+
+    // 🔥 When app is in background
+    FirebaseDynamicLinks.instance.onLink.listen((data) {
+      _handleDeepLink(data.link);
+    });
+  }
+
+  void _handleDeepLink(Uri deepLink) async {
+    if (deepLink.path == "/course") {
+      final id = deepLink.queryParameters["id"];
+
+      if (id == null) return;
+
+      setState(() {
+        index = 1; // ✅ Switch to Explore tab
+      });
+
+      // Small delay to allow tab to build
+      await Future.delayed(const Duration(milliseconds: 300));
+
+      final courseData = await fetchCourseById(id);
+
+      if (courseData != null && mounted) {
+        Navigator.pop(
+          context,
+          MaterialPageRoute(
+            builder: (_) => CourseDetailScreen(
+              data: courseData,
+              option: "Courses",
+              isLocked: true,
+            ),
+          ),
+        );
+      } else {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text("Course not found")));
+      }
+    }
   }
 
   Future<void> initFCM() async {
@@ -363,7 +429,7 @@ class _AdminExpandableFabState extends State<AdminExpandableFab> {
               } else if (label == "Chat Settings") {
                 showDialog(
                   context: context,
-                  builder: (_) =>  AdminDashboardScreen(),
+                  builder: (_) => AdminDashboardScreen(),
                 );
               } else {
                 Navigator.push(

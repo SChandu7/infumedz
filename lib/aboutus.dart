@@ -29,9 +29,6 @@ class AboutUsScreen extends StatelessWidget {
             _FoundersSection(),
             SizedBox(height: 32),
 
-            _ContentTeamSection(),
-            SizedBox(height: 32),
-
             _ContactSection(),
             SizedBox(height: 40),
           ],
@@ -133,65 +130,12 @@ class _FoundersSection extends StatelessWidget {
           education: "Technology & Operations",
           imageUrl: "assets/infumedz3.jpg",
         ),
-
-        _TeamCard(
-          name: "Dr. Harika Puligolla",
-          role: "Co-Founder & Educator",
-          education: "MBBS, DNB (Radiation Oncology)",
-          imageUrl: "assets/logo.png",
-        ),
-
-        _TeamCard(
-          name: "Dr. P. Srikanth Reddy",
-          role: "Educator & Marketing Head",
-          education: "MBBS, MD (General Medicine)",
-          imageUrl: "assets/logo2.png",
-        ),
       ],
     );
   }
 }
 
 /* ---------------- CONTENT TEAM ---------------- */
-
-class _ContentTeamSection extends StatelessWidget {
-  const _ContentTeamSection();
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const _SectionTitle(title: "Content Writing Team"),
-        const SizedBox(height: 12),
-        Text(
-          "Our content team consists of experienced medical professionals "
-          "dedicated to producing accurate, evidence-based educational material.",
-          style: TextStyle(
-            fontSize: 14,
-            height: 1.6,
-            color: Colors.grey.shade800,
-          ),
-        ),
-        const SizedBox(height: 16),
-
-        _TeamCard(
-          name: "Dr. Nikhila Reddy",
-          role: "Content Writer & Educator",
-          education: "MBBS",
-          imageUrl: "assets/logo2.png",
-        ),
-
-        _TeamCard(
-          name: "Dr. Chaithanya Reddy",
-          role: "Content Writer & Educator",
-          education: "MBBS",
-          imageUrl: "assets/logo2.png",
-        ),
-      ],
-    );
-  }
-}
 
 /* ---------------- CONTACT ---------------- */
 
