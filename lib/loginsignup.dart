@@ -236,7 +236,7 @@ class _LoginPageState extends State<LoginPage> {
                           padding: const EdgeInsets.all(30),
                           child: Column(
                             children: <Widget>[
-                              const SizedBox(height: 60),
+                              const SizedBox(height: 30),
                               FadeInUp(
                                 duration: const Duration(milliseconds: 1200),
                                 child: Container(
@@ -339,7 +339,7 @@ class _LoginPageState extends State<LoginPage> {
                                   ),
                                 ),
                               ),
-                              const SizedBox(height: 40),
+                              const SizedBox(height: 30),
                               FadeInUp(
                                 duration: const Duration(milliseconds: 1300),
                                 child: const Text(
@@ -347,7 +347,7 @@ class _LoginPageState extends State<LoginPage> {
                                   style: TextStyle(color: Colors.grey),
                                 ),
                               ),
-                              const SizedBox(height: 40),
+                              const SizedBox(height: 25),
                               FadeInUp(
                                 duration: const Duration(milliseconds: 1400),
                                 child: MaterialButton(
@@ -459,7 +459,7 @@ class _LoginPageState extends State<LoginPage> {
                                   ),
                                 ),
                               ),
-                              const SizedBox(height: 50),
+                              const SizedBox(height: 17),
                               FadeInUp(
                                 duration: const Duration(milliseconds: 1500),
                                 child: InkWell(
@@ -481,80 +481,85 @@ class _LoginPageState extends State<LoginPage> {
                                   ),
                                 ),
                               ),
-                              const SizedBox(height: 30),
-                              Expanded(
-                                child: FadeInUp(
-                                  duration: const Duration(milliseconds: 1700),
-                                  child: MaterialButton(
-                                    onPressed: () async {
-                                      final result = await AuthService()
-                                          .signInWithGoogle();
+                              const SizedBox(height: 25),
 
-                                      print("Google Sign-In result: $result");
+                              FadeInUp(
+                                duration: const Duration(milliseconds: 1400),
+                                child: MaterialButton(
+                                  onPressed: () async {
+                                    final result = await AuthService()
+                                        .signInWithGoogle();
 
-                                      if (result != null &&
-                                          result["error"] == null) {
-                                        await UserSession.saveUserId(
-                                          result["user_id"],
-                                        );
-                                        await UserSession.saveUsername(
-                                          result["name"],
-                                        );
-                                        await UserSession.saveUseremail(
-                                          result["email"],
-                                        ); // ✅ FIXED
+                                    print("Google Sign-In result: $result");
 
-                                        // ✅ Navigate
-                                        Navigator.push(
-                                          context,
-                                          MaterialPageRoute(
-                                            builder: (_) => const MainShell(),
-                                          ),
-                                        );
+                                    if (result != null &&
+                                        result["error"] == null) {
+                                      await UserSession.saveUserId(
+                                        result["user_id"],
+                                      );
+                                      await UserSession.saveUsername(
+                                        result["name"],
+                                      );
+                                      await UserSession.saveUseremail(
+                                        result["email"],
+                                      ); // ✅ FIXED
 
-                                        // ✅ Show proper message
-                                        ScaffoldMessenger.of(
-                                          context,
-                                        ).showSnackBar(
-                                          SnackBar(
-                                            content: Text(
-                                              result["message"] +
-                                                  ".......................",
-                                            ),
-                                          ),
-                                        );
-                                      } else {
-                                        print("Error: ${result?["error"]}");
-
-                                        ScaffoldMessenger.of(
-                                          context,
-                                        ).showSnackBar(
-                                          SnackBar(
-                                            content: Text(
-                                              result?["error"] ??
-                                                  "Login failed",
-                                            ),
-                                          ),
-                                        );
-                                      }
-                                    },
-                                    height: 50,
-                                    color: Colors.black,
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(50),
-                                    ),
-                                    child: const Center(
-                                      child: Text(
-                                        "Google",
-                                        style: TextStyle(
-                                          color: Colors.white,
-                                          fontWeight: FontWeight.bold,
+                                      // ✅ Navigate
+                                      Navigator.push(
+                                        context,
+                                        MaterialPageRoute(
+                                          builder: (_) => const MainShell(),
                                         ),
+                                      );
+
+                                      // ✅ Show proper message
+                                      ScaffoldMessenger.of(
+                                        context,
+                                      ).showSnackBar(
+                                        SnackBar(
+                                          content: Text(
+                                            result["message"] +
+                                                ".......................",
+                                          ),
+                                        ),
+                                      );
+                                    } else {
+                                      print("Error: ${result?["error"]}");
+
+                                      ScaffoldMessenger.of(
+                                        context,
+                                      ).showSnackBar(
+                                        SnackBar(
+                                          content: Text(
+                                            result?["error"] ?? "Login failed",
+                                          ),
+                                        ),
+                                      );
+                                    }
+                                  },
+
+                                  height: 50,
+                                  color: const Color.fromARGB(
+                                    255,
+                                    75,
+                                    136,
+                                    241,
+                                  ),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(50),
+                                  ),
+                                  child: const Center(
+                                    child: Text(
+                                      "Google Sign-In",
+                                      style: TextStyle(
+                                        color: Colors.white,
+                                        fontWeight: FontWeight.bold,
                                       ),
                                     ),
                                   ),
                                 ),
                               ),
+                              const SizedBox(height: 30),
                             ],
                           ),
                         ),

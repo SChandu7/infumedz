@@ -209,8 +209,25 @@ class _MainShellState extends State<MainShell> {
       _phone = phone;
       _email = email;
 
-      _isAdmin =
-          phone == "9949597079" ||
+      Future<void> _loadSession() async {
+        final phone = await UserSession.getUserphonenumber();
+        final email = await UserSession.getUseremail();
+
+        setState(() {
+          _phone = phone;
+          _email = email;
+
+          _isAdmin =
+              phone == "9949597079" ||
+              phone == "9167459168" ||
+              phone == "9167459138" ||
+              phone == "0000000000" ||
+              phone == "0987654321" ||
+              email == "chandrasekharsuragani532@gmail.com";
+        });
+      }
+
+      phone == "9949597079" ||
           phone == "9167459168" ||
           phone == "9167459138" ||
           phone == "0000000000" ||
@@ -641,6 +658,10 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
   List notifications = [];
   bool isLoadingNotifications = true;
 
+  String? _phone;
+  String? _email;
+  bool _isAdmin = false;
+
   @override
   void initState() {
     super.initState();
@@ -658,6 +679,25 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     );
 
     Future.delayed(const Duration(seconds: 5), _autoScroll);
+    _loadSession();
+  }
+
+  Future<void> _loadSession() async {
+    final phone = await UserSession.getUserphonenumber();
+    final email = await UserSession.getUseremail();
+
+    setState(() {
+      _phone = phone;
+      _email = email;
+
+      _isAdmin =
+          phone == "9949597079" ||
+          phone == "9167459168" ||
+          phone == "9167459138" ||
+          phone == "0000000000" ||
+          phone == "0987654321" ||
+          email == "chandrasekharsuragani532@gmail.com";
+    });
   }
 
   @override
@@ -982,7 +1022,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
   Widget _buildMarquee() {
     final text = aboutText.isNotEmpty
         ? aboutText
-        : "Welcome to InfuMedz Medical Learning Platform";
+        : "! No Internet Connection or Server Error Detected !";
 
     return Container(
       height: 32,
@@ -1138,11 +1178,23 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                 // RIGHT: NOTIFICATION / PROFILE
                 InkWell(
                   onTap: () {
-                    _showNotificationPanel();
-                    setState(() {
-                      // Optional: clear badge after opening
-                      // notifications.clear();
-                    });
+                    if (_isAdmin) {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute<void>(
+                          builder: (context) => AdminDashboardScreen(),
+                        ),
+                      );
+                    } else {
+                      print(UserSession.getUserphonenumber().toString());
+                      print(
+                        "=============================================================0",
+                      );
+                      _showNotificationPanel();
+                      setState(() {
+                        // Optional: clear badge after opening
+                      });
+                    }
                   },
                   child: Stack(
                     clipBehavior: Clip.none,
