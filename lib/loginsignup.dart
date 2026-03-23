@@ -1,20 +1,15 @@
 import 'dart:convert';
-import 'dart:io';
-import 'dart:typed_data';
+import 'dart:io' show Platform;
 import 'package:flutter/material.dart';
 import 'package:animate_do/animate_do.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:flutter_keyboard_visibility/flutter_keyboard_visibility.dart';
-import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
-import 'package:infumedz/user.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'main.dart';
-import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:http/http.dart' as http;
-import 'admin.dart';
-import 'main.dart';
-import 'package:google_sign_in/google_sign_in.dart';
+import 'package:url_launcher/url_launcher.dart';
+
 import 'googleauth.dart';
 
 class BufferPopup {
@@ -482,83 +477,84 @@ class _LoginPageState extends State<LoginPage> {
                                 ),
                               ),
                               const SizedBox(height: 25),
+                              if (Platform.isAndroid)
+                                FadeInUp(
+                                  duration: const Duration(milliseconds: 1400),
+                                  child: MaterialButton(
+                                    onPressed: () async {
+                                      final result = await AuthService()
+                                          .signInWithGoogle();
 
-                              FadeInUp(
-                                duration: const Duration(milliseconds: 1400),
-                                child: MaterialButton(
-                                  onPressed: () async {
-                                    final result = await AuthService()
-                                        .signInWithGoogle();
+                                      print("Google Sign-In result: $result");
 
-                                    print("Google Sign-In result: $result");
+                                      if (result != null &&
+                                          result["error"] == null) {
+                                        await UserSession.saveUserId(
+                                          result["user_id"],
+                                        );
+                                        await UserSession.saveUsername(
+                                          result["name"],
+                                        );
+                                        await UserSession.saveUseremail(
+                                          result["email"],
+                                        ); // ✅ FIXED
 
-                                    if (result != null &&
-                                        result["error"] == null) {
-                                      await UserSession.saveUserId(
-                                        result["user_id"],
-                                      );
-                                      await UserSession.saveUsername(
-                                        result["name"],
-                                      );
-                                      await UserSession.saveUseremail(
-                                        result["email"],
-                                      ); // ✅ FIXED
-
-                                      // ✅ Navigate
-                                      Navigator.push(
-                                        context,
-                                        MaterialPageRoute(
-                                          builder: (_) => const MainShell(),
-                                        ),
-                                      );
-
-                                      // ✅ Show proper message
-                                      ScaffoldMessenger.of(
-                                        context,
-                                      ).showSnackBar(
-                                        SnackBar(
-                                          content: Text(
-                                            result["message"] +
-                                                ".......................",
+                                        // ✅ Navigate
+                                        Navigator.push(
+                                          context,
+                                          MaterialPageRoute(
+                                            builder: (_) => const MainShell(),
                                           ),
-                                        ),
-                                      );
-                                    } else {
-                                      print("Error: ${result?["error"]}");
+                                        );
 
-                                      ScaffoldMessenger.of(
-                                        context,
-                                      ).showSnackBar(
-                                        SnackBar(
-                                          content: Text(
-                                            result?["error"] ?? "Login failed",
+                                        // ✅ Show proper message
+                                        ScaffoldMessenger.of(
+                                          context,
+                                        ).showSnackBar(
+                                          SnackBar(
+                                            content: Text(
+                                              result["message"] +
+                                                  ".......................",
+                                            ),
                                           ),
-                                        ),
-                                      );
-                                    }
-                                  },
+                                        );
+                                      } else {
+                                        print("Error: ${result?["error"]}");
 
-                                  height: 50,
-                                  color: const Color.fromARGB(
-                                    255,
-                                    75,
-                                    136,
-                                    241,
-                                  ),
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(50),
-                                  ),
-                                  child: const Center(
-                                    child: Text(
-                                      "Google Sign-In",
-                                      style: TextStyle(
-                                        color: Colors.white,
-                                        fontWeight: FontWeight.bold,
+                                        ScaffoldMessenger.of(
+                                          context,
+                                        ).showSnackBar(
+                                          SnackBar(
+                                            content: Text(
+                                              result?["error"] ??
+                                                  "Login failed",
+                                            ),
+                                          ),
+                                        );
+                                      }
+                                    },
+
+                                    height: 50,
+                                    color: const Color.fromARGB(
+                                      255,
+                                      75,
+                                      136,
+                                      241,
+                                    ),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(50),
+                                    ),
+                                    child: const Center(
+                                      child: Text(
+                                        "Google Sign-In",
+                                        style: TextStyle(
+                                          color: Colors.white,
+                                          fontWeight: FontWeight.bold,
+                                        ),
                                       ),
                                     ),
                                   ),
                                 ),
-                              ),
                               const SizedBox(height: 30),
                             ],
                           ),
@@ -593,6 +589,7 @@ class _SignUpPageState extends State<SignUpPage> {
   final TextEditingController _mobileController = TextEditingController();
   final TextEditingController _emailController = TextEditingController();
 
+  bool _agreedToTerms = false;
   String error = '';
   bool isLoading = false;
 
@@ -690,10 +687,103 @@ class _SignUpPageState extends State<SignUpPage> {
                         obscureText: true,
                       ),
                       const SizedBox(height: 30),
+                      // ADD THIS above the Sign Up MaterialButton
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Checkbox(
+                            value: _agreedToTerms,
+                            activeColor: Colors.orange.shade900,
+                            onChanged: (val) {
+                              setState(() => _agreedToTerms = val ?? false);
+                            },
+                          ),
+                          Expanded(
+                            child: Padding(
+                              padding: const EdgeInsets.only(top: 12),
+                              child: Wrap(
+                                children: [
+                                  const Text(
+                                    "I agree to the ",
+                                    style: TextStyle(
+                                      fontSize: 13,
+                                      color: Colors.black87,
+                                    ),
+                                  ),
+                                  GestureDetector(
+                                    onTap: () async {
+                                      final url = Uri.parse(
+                                        "https://infumedz.com/terms-and-conditions",
+                                      );
+                                      if (await canLaunchUrl(url)) {
+                                        await launchUrl(
+                                          url,
+                                          mode: LaunchMode.externalApplication,
+                                        );
+                                      }
+                                    },
+                                    child: Text(
+                                      "Terms & Conditions",
+                                      style: TextStyle(
+                                        fontSize: 13,
+                                        color: Colors.orange.shade900,
+                                        fontWeight: FontWeight.bold,
+                                        decoration: TextDecoration.underline,
+                                      ),
+                                    ),
+                                  ),
+                                  const Text(
+                                    " and ",
+                                    style: TextStyle(
+                                      fontSize: 13,
+                                      color: Colors.black87,
+                                    ),
+                                  ),
+                                  GestureDetector(
+                                    onTap: () async {
+                                      final url = Uri.parse(
+                                        "https://infumedz.com/privacy-policy",
+                                      );
+                                      if (await canLaunchUrl(url)) {
+                                        await launchUrl(
+                                          url,
+                                          mode: LaunchMode.externalApplication,
+                                        );
+                                      }
+                                    },
+                                    child: Text(
+                                      "Privacy Policy",
+                                      style: TextStyle(
+                                        fontSize: 13,
+                                        color: Colors.orange.shade900,
+                                        fontWeight: FontWeight.bold,
+                                        decoration: TextDecoration.underline,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 16),
                       FadeInDown(
                         duration: const Duration(milliseconds: 700),
+
                         child: MaterialButton(
                           onPressed: () async {
+                            if (!_agreedToTerms) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: const Text(
+                                    "Please agree to Terms & Conditions and Privacy Policy",
+                                  ),
+                                  backgroundColor: Colors.orange.shade900,
+                                ),
+                              );
+                              return;
+                            }
                             final res = await http.post(
                               Uri.parse("https://api.chandus7.in/user/"),
                               headers: {"Content-Type": "application/json"},

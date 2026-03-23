@@ -1,5 +1,5 @@
 import 'dart:convert';
-import 'dart:io';
+import 'dart:io' show Platform;
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:image_picker/image_picker.dart';
@@ -18,10 +18,9 @@ import 'explore.dart' hide UserChatScreen;
 import 'thesis.dart';
 import 'library.dart';
 import "splash.dart";
-import 'package:firebase_dynamic_links/firebase_dynamic_links.dart';
 
 class ApiConfig {
-  static const base = "http://13.203.219.206:8000";
+  static const base = "https://api.chandus7.in";
 
   static const categories = "$base/api/infumedz/categories/";
   static const courses = "$base/api/infumedz/courses/";
@@ -35,7 +34,7 @@ class ApiConfig {
   static const presignedPdfUpload = "$base/upload/book/presigned/";
 
   static const uploadThumbnail =
-      "http://13.203.219.206:8000/api/infumedz/upload/course-thumbnail/";
+      "https://api.chandus7.in/api/infumedz/upload/course-thumbnail/";
 }
 
 Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
@@ -61,7 +60,7 @@ Future<void> main() async {
       statusBarIconBrightness: Brightness.dark,
     ),
   );
-  WidgetsFlutterBinding.ensureInitialized();
+
   await Firebase.initializeApp();
   runApp(const InfuMedzApp());
 }
@@ -103,7 +102,6 @@ class _MainShellState extends State<MainShell> {
     super.initState();
     _loadSession();
     initFCM();
-    initDynamicLinks(); // ✅ ADD THIS
   }
 
   Future<Map<String, dynamic>?> fetchCourseById(String id) async {
@@ -123,54 +121,6 @@ class _MainShellState extends State<MainShell> {
     }
 
     return null;
-  }
-
-  void initDynamicLinks() async {
-    // 🔥 When app is terminated
-    final initialLink = await FirebaseDynamicLinks.instance.getInitialLink();
-
-    if (initialLink != null) {
-      _handleDeepLink(initialLink.link);
-    }
-
-    // 🔥 When app is in background
-    FirebaseDynamicLinks.instance.onLink.listen((data) {
-      _handleDeepLink(data.link);
-    });
-  }
-
-  void _handleDeepLink(Uri deepLink) async {
-    if (deepLink.path == "/course") {
-      final id = deepLink.queryParameters["id"];
-
-      if (id == null) return;
-
-      setState(() {
-        index = 1; // ✅ Switch to Explore tab
-      });
-
-      // Small delay to allow tab to build
-      await Future.delayed(const Duration(milliseconds: 300));
-
-      final courseData = await fetchCourseById(id);
-
-      if (courseData != null && mounted) {
-        Navigator.pop(
-          context,
-          MaterialPageRoute(
-            builder: (_) => CourseDetailScreen(
-              data: courseData,
-              option: "Courses",
-              isLocked: true,
-            ),
-          ),
-        );
-      } else {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(const SnackBar(content: Text("Course not found")));
-      }
-    }
   }
 
   Future<void> initFCM() async {
@@ -204,30 +154,11 @@ class _MainShellState extends State<MainShell> {
   Future<void> _loadSession() async {
     final phone = await UserSession.getUserphonenumber();
     final email = await UserSession.getUseremail();
-
     setState(() {
       _phone = phone;
       _email = email;
-
-      Future<void> _loadSession() async {
-        final phone = await UserSession.getUserphonenumber();
-        final email = await UserSession.getUseremail();
-
-        setState(() {
-          _phone = phone;
-          _email = email;
-
-          _isAdmin =
-              phone == "9949597079" ||
-              phone == "9167459168" ||
-              phone == "9167459138" ||
-              phone == "0000000000" ||
-              phone == "0987654321" ||
-              email == "chandrasekharsuragani532@gmail.com";
-        });
-      }
-
-      phone == "9949597079" ||
+      _isAdmin =
+          phone == "9949597079" ||
           phone == "9167459168" ||
           phone == "9167459138" ||
           phone == "0000000000" ||

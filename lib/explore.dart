@@ -17,6 +17,8 @@ import 'payment.dart';
 import 'loginsignup.dart';
 import 'package:firebase_dynamic_links/firebase_dynamic_links.dart';
 import 'package:share_plus/share_plus.dart';
+import 'dart:io' show Platform;
+import 'package:in_app_purchase/in_app_purchase.dart';
 
 class MedicalStoreScreen extends StatefulWidget {
   final String initialCategory; // 👈 NEW
@@ -792,7 +794,12 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
   String? _phone;
   String? _email;
   bool _isAdmin = false;
-
+  // ADD below existing Razorpay fields
+  final InAppPurchase _iap = InAppPurchase.instance;
+  bool _iapAvailable = false;
+  List<ProductDetails> _products = [];
+  StreamSubscription<List<PurchaseDetails>>? _iapSubscription;
+  bool _purchaseLoading = false;
   int selectedRating = 5;
   TextEditingController reviewController = TextEditingController();
   bool isSubmittingReview = false;
@@ -858,6 +865,10 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
     _razorpay.on(Razorpay.EVENT_PAYMENT_SUCCESS, _onSuccess);
     _razorpay.on(Razorpay.EVENT_PAYMENT_ERROR, _onError);
     print(widget.data);
+
+    if (Platform.isIOS) {
+      _initIAP();
+    }
 
     print(widget.data);
     if (widget.option == "Books") {
@@ -992,51 +1003,146 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
   @override
   void dispose() {
     _razorpay.clear();
+    _iapSubscription?.cancel(); // ADD
+
     super.dispose();
+  }
+
+  Future<void> _initIAP() async {
+    _iapAvailable = await _iap.isAvailable();
+    if (!_iapAvailable) return;
+
+    // Product IDs must match exactly what you create in
+    // App Store Connect → your app → In-App Purchases
+    final String productId = _getIAPProductId(widget.data["price"]);
+
+    final response = await _iap.queryProductDetails({productId});
+    if (response.productDetails.isNotEmpty) {
+      setState(() => _products = response.productDetails);
+    }
+
+    _iapSubscription = _iap.purchaseStream.listen(
+      _onIAPPurchaseUpdate,
+      onDone: () => _iapSubscription?.cancel(),
+      onError: (e) => debugPrint("IAP stream error: $e"),
+    );
+  }
+
+  // ADD this method inside _CourseDetailScreenState
+  String _getIAPProductId(dynamic price) {
+    final int p = int.tryParse(price.toString().split('.').first) ?? 0;
+    if (p <= 199) return "com.infumedz.tier1";
+    if (p <= 499) return "com.infumedz.tier2";
+    if (p <= 999) return "com.infumedz.tier3";
+    if (p <= 1499) return "com.infumedz.tier4";
+    return "com.infumedz.tier5";
+  }
+
+  // BEFORE — two separate methods buyCourse() and startPayment()
+  // REPLACE BOTH with this single method:
+
+  Future<void> startPayment() async {
+    final userId = await UserSession.getUserId();
+    if (userId == null) {
+      Navigator.push(
+        context,
+        MaterialPageRoute(builder: (_) => const LoginPage()),
+      );
+      return;
+    }
+
+    if (Platform.isIOS) {
+      // ── iOS: Apple IAP ──
+      if (!_iapAvailable) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text("Store not available")));
+        return;
+      }
+      if (_products.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("Product not found in App Store")),
+        );
+        return;
+      }
+      setState(() => _purchaseLoading = true);
+      final purchaseParam = PurchaseParam(productDetails: _products.first);
+      await _iap.buyNonConsumable(purchaseParam: purchaseParam);
+    } else {
+      // ── Android: Razorpay (existing logic) ──
+      final isBook = widget.option == "Books";
+      final url = isBook
+          ? "https://api.chandus7.in/api/infumedz/payment/create-book-order/"
+          : "https://api.chandus7.in/api/infumedz/payment/create-course-order/";
+      final body = isBook
+          ? {"user": userId, "book_id": widget.data["id"]}
+          : {"user": userId, "course_id": widget.data["id"]};
+
+      final res = await http.post(
+        Uri.parse(url),
+        headers: {"Content-Type": "application/json"},
+        body: jsonEncode(body),
+      );
+
+      if (res.statusCode != 200) {
+        final err = jsonDecode(res.body);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(err["error"] ?? "Payment failed")),
+        );
+        return;
+      }
+
+      final data = jsonDecode(res.body);
+      _orderId = data["order_id"];
+      _openRazorpay(data["key"]); // existing method — no change
+    }
+  }
+
+  void _onIAPPurchaseUpdate(List<PurchaseDetails> purchases) async {
+    for (final purchase in purchases) {
+      if (purchase.status == PurchaseStatus.purchased ||
+          purchase.status == PurchaseStatus.restored) {
+        await _verifyIAPWithBackend(purchase);
+        await _iap.completePurchase(purchase);
+        setState(() {
+          widget.isLocked = false;
+          _purchaseLoading = false;
+        });
+      } else if (purchase.status == PurchaseStatus.error) {
+        setState(() => _purchaseLoading = false);
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(purchase.error?.message ?? "Purchase failed"),
+            ),
+          );
+        }
+      } else if (purchase.status == PurchaseStatus.pending) {
+        setState(() => _purchaseLoading = true);
+      }
+    }
+  }
+
+  // REPLACE the entire _verifyIAPWithBackend method with this:
+  Future<void> _verifyIAPWithBackend(PurchaseDetails purchase) async {
+    final userId = await UserSession.getUserId();
+    await http.post(
+      Uri.parse("https://api.chandus7.in/api/infumedz/payment/verify-iap/"),
+      headers: {"Content-Type": "application/json"},
+      body: jsonEncode({
+        "user_id": userId,
+        "product_id": purchase.productID, // tier — for Apple verification
+        "purchase_token": purchase.verificationData.serverVerificationData,
+        "platform": "ios",
+        "item_type": widget.option == "Books" ? "book" : "course",
+        "item_id": widget.data["id"], // actual course/book UUID — for DB unlock
+      }),
+    );
   }
 
   // =====================================================
   // STEP 1: CREATE ORDER
   // =====================================================
-  Future<void> startPayment() async {
-    final userId = await UserSession.getUserId();
-    if (userId == null) {
-      Navigator.push(context, MaterialPageRoute(builder: (_) => LoginPage()));
-      return;
-    }
-
-    final isBook = widget.option == "Books";
-
-    final url = isBook
-        ? "https://api.chandus7.in/api/infumedz/payment/create-book-order/"
-        : "https://api.chandus7.in/api/infumedz/payment/create-course-order/";
-
-    final body = isBook
-        ? {"user": userId, "book_id": widget.data["id"]}
-        : {"user": userId, "course_id": widget.data["id"]};
-
-    final res = await http.post(
-      Uri.parse(url),
-      headers: {"Content-Type": "application/json"},
-      body: jsonEncode(body),
-    );
-
-    if (res.statusCode != 200) {
-      final err = jsonDecode(res.body);
-      setState(() {
-        widget.isLocked = false; // lock content on failure just in case
-      });
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(err["error"] ?? "Payment failed")));
-      return;
-    }
-
-    final data = jsonDecode(res.body);
-    _orderId = data["order_id"];
-
-    _openRazorpay(data["key"]);
-  }
 
   // =====================================================
   // STEP 2: OPEN RAZORPAY
@@ -1143,22 +1249,24 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
             /// 🛒 Add to Cart
             Expanded(
               child: ElevatedButton(
-                onPressed: startPayment,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF0E5FD8),
-                  padding: const EdgeInsets.symmetric(vertical: 14),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                ),
-                child: Text(
-                  "Buy• ${widget.data["price"] ?? "0"}",
-                  style: const TextStyle(
-                    fontSize: 15,
-                    fontWeight: FontWeight.w700,
-                    color: Colors.white,
-                  ),
-                ),
+                onPressed: _purchaseLoading ? null : startPayment,
+                child: _purchaseLoading
+                    ? const SizedBox(
+                        height: 20,
+                        width: 20,
+                        child: CircularProgressIndicator(
+                          color: Colors.white,
+                          strokeWidth: 2,
+                        ),
+                      )
+                    : Text(
+                        "Buy • ${widget.data["price"] ?? "0"}",
+                        style: const TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w700,
+                          color: Colors.white,
+                        ),
+                      ),
               ),
             ),
           ],
