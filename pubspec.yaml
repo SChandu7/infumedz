@@ -57,11 +57,11 @@ dependencies:
   flutter_keyboard_visibility: ^6.0.0
   shared_preferences: ^2.5.4
   flutter_animate: ^4.5.2
-  firebase_core: ^2.27.0
-  firebase_messaging: ^14.7.10
+  firebase_core: any
+  firebase_messaging: any
   firebase_dynamic_links: ^5.5.7
   share_plus: ^12.0.1
-  google_sign_in: ^6.2.1
+  google_sign_in: any
 
 
 
