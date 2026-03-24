@@ -15,7 +15,6 @@ import 'cart.dart';
 import 'main.dart';
 import 'payment.dart';
 import 'loginsignup.dart';
-import 'package:firebase_dynamic_links/firebase_dynamic_links.dart';
 import 'package:share_plus/share_plus.dart';
 import 'dart:io' show Platform;
 import 'package:in_app_purchase/in_app_purchase.dart';
@@ -954,26 +953,6 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
     }
 
     return null;
-  }
-
-  Future<void> _shareCourse() async {
-    final String courseId = widget.data["id"].toString();
-
-    final DynamicLinkParameters parameters = DynamicLinkParameters(
-      uriPrefix: 'https://chandus7.page.link',
-      link: Uri.parse("https://chandus7.page.link/course?id=$courseId"),
-      androidParameters: const AndroidParameters(
-        packageName: "com.infumedz.app",
-        minimumVersion: 1,
-      ),
-    );
-
-    final ShortDynamicLink shortLink = await FirebaseDynamicLinks.instance
-        .buildShortLink(parameters);
-
-    final Uri shortUrl = shortLink.shortUrl;
-
-    Share.share(shortUrl.toString());
   }
 
   Future<void> fetchReviews() async {
