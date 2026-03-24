@@ -27,9 +27,6 @@ class AuthService {
       // Step 2: Get authentication tokens
       final GoogleSignInAuthentication auth = await account.authentication;
 
-      print("🔐 Access Token: ${auth.accessToken}");
-      print("🆔 ID Token: ${auth.idToken}");
-
       final idToken = auth.idToken;
 
       if (idToken == null) {
