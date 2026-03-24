@@ -18,6 +18,7 @@ import 'explore.dart' hide UserChatScreen;
 import 'thesis.dart';
 import 'library.dart';
 import "splash.dart";
+import 'package:device_preview/device_preview.dart';
 
 class ApiConfig {
   static const base = "https://api.chandus7.in";
@@ -62,7 +63,10 @@ Future<void> main() async {
   );
 
   await Firebase.initializeApp();
-  runApp(const InfuMedzApp());
+  DevicePreview(
+    enabled: false, // 🔥 DISABLE for production
+    builder: (context) => const InfuMedzApp(),
+  );
 }
 
 class InfuMedzApp extends StatelessWidget {
