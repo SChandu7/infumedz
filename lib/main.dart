@@ -44,28 +44,25 @@ Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await Firebase.initializeApp();
+  await Firebase.initializeApp(); // ← only ONCE
 
   FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
 
   SystemChrome.setSystemUIOverlayStyle(
     const SystemUiOverlayStyle(
-      systemNavigationBarColor: Color.fromARGB(
-        255,
-        130,
-        17,
-        17,
-      ), // ✅ background
-      systemNavigationBarIconBrightness: Brightness.dark, // ✅ icons
+      systemNavigationBarColor: Color.fromARGB(255, 130, 17, 17),
+      systemNavigationBarIconBrightness: Brightness.dark,
       statusBarColor: Colors.transparent,
       statusBarIconBrightness: Brightness.dark,
     ),
   );
 
-  await Firebase.initializeApp();
-  DevicePreview(
-    enabled: false, // 🔥 DISABLE for production
-    builder: (context) => const InfuMedzApp(),
+  runApp(
+    DevicePreview(
+      // ← runApp() ADDED
+      enabled: false,
+      builder: (context) => const InfuMedzApp(),
+    ),
   );
 }
 
