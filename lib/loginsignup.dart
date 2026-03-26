@@ -403,7 +403,6 @@ class _LoginPageState extends State<LoginPage> {
                                           await UserSession.saveUserphonenumber(
                                             data2["phone"],
                                           );
-
                                         }
 
                                         // ✅ NAVIGATE
@@ -784,7 +783,9 @@ class _SignUpPageState extends State<SignUpPage> {
                               return;
                             }
                             final res = await http.post(
-                              Uri.parse("https://api.chandus7.in/user/"),
+                              Uri.parse(
+                                "https://api.chandus7.in/api/infumedz/signup/",
+                              ),
                               headers: {"Content-Type": "application/json"},
                               body: jsonEncode({
                                 "name": _usernameController.text,
@@ -812,8 +813,14 @@ class _SignUpPageState extends State<SignUpPage> {
                                 MaterialPageRoute(builder: (_) => MainShell()),
                               );
                             } else {
+                              final errorData = jsonDecode(res.body);
+
                               ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(content: Text("Signup failed")),
+                                SnackBar(
+                                  content: Text(
+                                    errorData["error"] ?? "Signup failed",
+                                  ),
+                                ),
                               );
                             }
                           },

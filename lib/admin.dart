@@ -1220,12 +1220,12 @@ class _AppFooter extends StatelessWidget {
           ),
           const SizedBox(height: 6),
           const Text(
-            "support@infumedz.com",
+            "infusionmedz@gmail.com",
             style: TextStyle(fontSize: 13, color: Colors.black54),
           ),
           const SizedBox(height: 4),
           const Text(
-            "+91 9XXXXXXXXX",
+            "+91 9381740718",
             style: TextStyle(fontSize: 13, color: Colors.black54),
           ),
 

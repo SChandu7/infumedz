@@ -2,20 +2,15 @@ import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
-import 'package:image_picker/image_picker.dart';
-import 'package:flutter_file_dialog/flutter_file_dialog.dart';
 import 'package:flutter/services.dart';
+import 'package:infumedz/library.dart';
 import 'package:infumedz/loginsignup.dart';
 import 'dart:async';
 import 'package:infumedz/views.dart';
 import 'package:razorpay_flutter/razorpay_flutter.dart';
 import 'package:video_player/video_player.dart';
-import 'admin.dart';
 import 'cart.dart';
 import 'main.dart';
-import 'payment.dart';
-import 'loginsignup.dart';
-import 'package:share_plus/share_plus.dart';
 import 'dart:io' show Platform;
 import 'package:in_app_purchase/in_app_purchase.dart';
 
@@ -802,6 +797,8 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
   int selectedRating = 5;
   TextEditingController reviewController = TextEditingController();
   bool isSubmittingReview = false;
+  bool hasAccess = false;
+  bool checkingAccess = true;
 
   bool get isBook => widget.option == "Books";
   String _getYoutubeThumbnail(String url) {
@@ -859,6 +856,7 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
   @override
   void initState() {
     _loadSession();
+    checkAccess();
     _razorpay = Razorpay();
 
     _razorpay.on(Razorpay.EVENT_PAYMENT_SUCCESS, _onSuccess);
@@ -890,6 +888,34 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
     fetchReviews();
 
     super.initState();
+  }
+
+  Future<void> checkAccess() async {
+    final userId = await UserSession.getUserId();
+
+    if (userId == null) {
+      setState(() => checkingAccess = false);
+      return;
+    }
+
+    final type = widget.option == "Books" ? "book" : "course";
+
+    final res = await http.get(
+      Uri.parse(
+        "https://api.chandus7.in/api/infumedz/check-access/$userId/$type/${widget.data["id"]}/",
+      ),
+    );
+
+    if (res.statusCode == 200) {
+      final data = jsonDecode(res.body);
+
+      setState(() {
+        hasAccess = data["has_access"];
+        checkingAccess = false;
+      });
+    } else {
+      setState(() => checkingAccess = false);
+    }
   }
 
   Future<void> submitReview() async {
@@ -1227,25 +1253,66 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
 
             /// 🛒 Add to Cart
             Expanded(
-              child: ElevatedButton(
-                onPressed: _purchaseLoading ? null : startPayment,
-                child: _purchaseLoading
-                    ? const SizedBox(
-                        height: 20,
-                        width: 20,
-                        child: CircularProgressIndicator(
-                          color: Colors.white,
-                          strokeWidth: 2,
-                        ),
-                      )
-                    : Text(
-                        "Buy • ${widget.data["price"] ?? "0"}",
-                        style: const TextStyle(
+              child: Builder(
+                builder: (_) {
+                  // 🔄 Checking access (API call running)
+                  if (checkingAccess) {
+                    return const Center(
+                      child: SizedBox(
+                        height: 22,
+                        width: 22,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      ),
+                    );
+                  }
+
+                  // ✅ USER ALREADY PURCHASED
+                  if (hasAccess) {
+                    return ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.green,
+                      ),
+                      onPressed: () {
+                        if (widget.videos.isEmpty) return;
+
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(builder: (_) => LibraryPage()),
+                        );
+                      },
+                      child: const Text(
+                        "Continue Learning",
+                        style: TextStyle(
                           fontSize: 15,
                           fontWeight: FontWeight.w700,
                           color: Colors.white,
                         ),
                       ),
+                    );
+                  }
+
+                  // 💳 NOT PURCHASED → SHOW BUY BUTTON
+                  return ElevatedButton(
+                    onPressed: _purchaseLoading ? null : startPayment,
+                    child: _purchaseLoading
+                        ? const SizedBox(
+                            height: 20,
+                            width: 20,
+                            child: CircularProgressIndicator(
+                              color: Colors.white,
+                              strokeWidth: 2,
+                            ),
+                          )
+                        : Text(
+                            "Buy • ${widget.data["price"] ?? "0"}",
+                            style: const TextStyle(
+                              fontSize: 15,
+                              fontWeight: FontWeight.w700,
+                              color: Colors.white,
+                            ),
+                          ),
+                  );
+                },
               ),
             ),
           ],
