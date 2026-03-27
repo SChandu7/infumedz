@@ -13,6 +13,7 @@ import 'cart.dart';
 import 'main.dart';
 import 'dart:io' show Platform;
 import 'package:in_app_purchase/in_app_purchase.dart';
+import 'package:share_plus/share_plus.dart';
 
 class MedicalStoreScreen extends StatefulWidget {
   final String initialCategory; // 👈 NEW
@@ -90,6 +91,93 @@ class _MedicalStoreScreenState extends State<MedicalStoreScreen> {
             .toList();
       }
     });
+  }
+
+  Widget _shimmerBox({double? width, double? height, double radius = 8}) {
+    return TweenAnimationBuilder<double>(
+      tween: Tween(begin: 0.3, end: 1.0),
+      duration: const Duration(milliseconds: 900),
+      builder: (_, value, child) => Opacity(opacity: value, child: child),
+      onEnd: () {
+        if (mounted) setState(() {});
+      },
+      child: Container(
+        width: width,
+        height: height,
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(radius),
+          gradient: LinearGradient(
+            colors: [
+              const Color(0xFFE8EDF5),
+              const Color(0xFFF5F7FA),
+              const Color(0xFFE8EDF5),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildStoreSkeletonList() {
+    return ListView.builder(
+      padding: const EdgeInsets.all(12),
+      itemCount: 6,
+      itemBuilder: (_, __) => Container(
+        margin: const EdgeInsets.only(bottom: 20, left: 10, right: 10),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(4),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.04),
+              blurRadius: 10,
+              offset: const Offset(0, 5),
+            ),
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // ── thumbnail placeholder ──
+            ClipRRect(
+              borderRadius: const BorderRadius.vertical(
+                top: Radius.circular(4),
+              ),
+              child: _shimmerBox(
+                height: 160,
+                width: double.infinity,
+                radius: 0,
+              ),
+            ),
+
+            Padding(
+              padding: const EdgeInsets.fromLTRB(12, 10, 12, 12),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // title line 1
+                  _shimmerBox(height: 14, width: double.infinity),
+                  const SizedBox(height: 6),
+                  // title line 2
+                  _shimmerBox(height: 14, width: 200),
+                  const SizedBox(height: 10),
+                  // rating + price row
+                  Row(
+                    children: [
+                      _shimmerBox(height: 12, width: 60),
+                      const Spacer(),
+                      _shimmerBox(height: 12, width: 80),
+                      const Spacer(),
+                      _shimmerBox(height: 12, width: 60),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   Future<void> fetchCategories() async {
@@ -260,9 +348,6 @@ class _MedicalStoreScreenState extends State<MedicalStoreScreen> {
               .where((item) => item["category_name"] == selectedCategoryName)
               .toList();
 
-    if (loadingCategories || loadingCourses || loadingBooks) {
-      return const Center(child: CircularProgressIndicator());
-    }
     return Scaffold(
       backgroundColor: const Color(0xFFF6F8FC),
       appBar: AppBar(
@@ -491,46 +576,49 @@ class _MedicalStoreScreenState extends State<MedicalStoreScreen> {
             ),
 
             /// LIST
+            /// LIST
             Expanded(
-              child: ListView.builder(
-                padding: const EdgeInsets.all(12),
-                itemCount: data.length,
-                itemBuilder: (context, i) {
-                  final item = data[i];
-                  return _CourseListCard(
-                    data: {
-                      "title": item["title"],
-                      "image": item["thumbnail_url"],
-                      "price": "₹${item["price"]}",
-                      "learners": item["learners"] ?? "",
-                      "videos": item["videos"] ?? [],
-                    },
-                    isWishlisted: wishlistItems.contains(item),
-                    onTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => CourseDetailScreen(
-                            data: item,
-                            option: selectedType,
-                            isLocked: true,
-                          ),
-                        ),
-                      );
-                    },
-                    onWishlist: () {
-                      setState(() {
-                        if (wishlistItems.contains(item)) {
-                          wishlistItems.remove(item);
-                        } else {
-                          wishlistItems.add(item);
-                        }
-                      });
-                    },
-                    onAddToCart: () {},
-                  );
-                },
-              ),
+              child: (loadingCourses || loadingBooks)
+                  ? _buildStoreSkeletonList()
+                  : ListView.builder(
+                      padding: const EdgeInsets.all(12),
+                      itemCount: data.length,
+                      itemBuilder: (context, i) {
+                        final item = data[i];
+                        return _CourseListCard(
+                          data: {
+                            "title": item["title"],
+                            "image": item["thumbnail_url"],
+                            "price": "₹${item["price"]}",
+                            "learners": item["learners"] ?? "",
+                            "videos": item["videos"] ?? [],
+                          },
+                          isWishlisted: wishlistItems.contains(item),
+                          onTap: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => CourseDetailScreen(
+                                  data: item,
+                                  option: selectedType,
+                                  isLocked: true,
+                                ),
+                              ),
+                            );
+                          },
+                          onWishlist: () {
+                            setState(() {
+                              if (wishlistItems.contains(item)) {
+                                wishlistItems.remove(item);
+                              } else {
+                                wishlistItems.add(item);
+                              }
+                            });
+                          },
+                          onAddToCart: () {},
+                        );
+                      },
+                    ),
             ),
             const SizedBox(height: 65),
           ],
@@ -1299,7 +1387,7 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
                             height: 20,
                             width: 20,
                             child: CircularProgressIndicator(
-                              color: Colors.white,
+                              color: Colors.blueAccent,
                               strokeWidth: 2,
                             ),
                           )
@@ -1308,7 +1396,7 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
                             style: const TextStyle(
                               fontSize: 15,
                               fontWeight: FontWeight.w700,
-                              color: Colors.white,
+                              color: Colors.blueAccent,
                             ),
                           ),
                   );
@@ -1326,7 +1414,13 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
             actions: [
               IconButton(
                 icon: const Icon(Icons.share, color: Colors.white),
-                onPressed: () {},
+                onPressed: () {
+                  final id = widget.data["id"];
+                  final name = widget.data["title"];
+                  final link = "https://chandus7.in/course/$id";
+
+                  Share.share("Check this course: $name \n$link");
+                },
               ),
             ],
             backgroundColor: Colors.black,

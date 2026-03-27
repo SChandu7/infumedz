@@ -18,6 +18,8 @@ import 'thesis.dart';
 import 'library.dart';
 import "splash.dart";
 import 'package:device_preview/device_preview.dart';
+import 'dart:async';
+import 'package:app_links/app_links.dart';
 
 class ApiConfig {
   static const base = "https://api.chandus7.in";
@@ -97,12 +99,67 @@ class _MainShellState extends State<MainShell> {
   String? _email;
   bool _isAdmin = false;
   bool _sessionLoaded = false; // ← NEW
+  late final AppLinks _appLinks;
+  StreamSubscription<Uri>? _sub;
+  bool _linkHandled = false;
+
+  void _handleLink(Uri uri) {
+    if (_linkHandled) return;
+    _linkHandled = true;
+
+    if (uri.pathSegments.length >= 2 && uri.pathSegments[0] == "course") {
+      final courseId = uri.pathSegments[1];
+      _openCourse(courseId);
+    }
+  }
+
+  Future<void> _openCourse(String courseId) async {
+    final res = await http.get(
+      Uri.parse("https://api.chandus7.in/api/infumedz/courses/"),
+    );
+
+    if (res.statusCode == 200) {
+      final List courses = jsonDecode(res.body);
+
+      final course = courses.firstWhere((c) => c["id"].toString() == courseId);
+
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => CourseDetailScreen(
+            data: course,
+            option: "Courses",
+            isLocked: true,
+          ),
+        ),
+      );
+    }
+  }
 
   @override
   void initState() {
     super.initState();
     _loadSession();
-    initFCM();
+
+    _appLinks = AppLinks();
+
+    // ✅ Correct method for v7
+    _appLinks.getInitialLink().then((uri) {
+      if (uri != null) {
+        _handleLink(uri);
+      }
+    });
+
+    // App running
+    _sub = _appLinks.uriLinkStream.listen((uri) {
+      _handleLink(uri);
+    });
+  }
+
+  @override
+  void dispose() {
+    _sub?.cancel();
+    super.dispose();
   }
 
   Future<Map<String, dynamic>?> fetchCourseById(String id) async {
@@ -307,7 +364,7 @@ class _AdminExpandableFabState extends State<AdminExpandableFab> {
               _staggeredFabOption(
                 1,
                 Icons.published_with_changes,
-                "Update Banner",
+                "Update Data",
               ),
               _staggeredFabOption(0, Icons.delete, "Chat Settings"),
             ],
@@ -521,7 +578,14 @@ class _NavItem extends StatelessWidget {
                         ),
                       ),
                     )
-                  : const SizedBox.shrink(),
+                  : Text(
+                      label,
+                      style: const TextStyle(
+                        fontSize: 11, // ⬅ smaller text
+                        fontWeight: FontWeight.w600,
+                        color: Color(0xFF0E5FD8),
+                      ),
+                    ),
             ),
           ],
         ),
@@ -642,11 +706,9 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
       final bannerRes = await http.get(
         Uri.parse("https://api.chandus7.in/api/infumedz/app-banner/"),
       );
-
       final coursesRes = await http.get(
         Uri.parse("https://api.chandus7.in/api/infumedz/courses/"),
       );
-
       final booksRes = await http.get(
         Uri.parse("https://api.chandus7.in/api/infumedz/books/"),
       );
@@ -655,53 +717,44 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
       final courses = List<Map<String, dynamic>>.from(
         jsonDecode(coursesRes.body),
       );
-
       final books = List<Map<String, dynamic>>.from(jsonDecode(booksRes.body));
 
       final List<String> popularCourseIds = List<String>.from(
         banner["popular_courses"] ?? [],
       );
-
       final List<String> popularBookIds = List<String>.from(
         banner["popular_books"] ?? [],
       );
 
-      /// 🔹 FILTER COURSES BASED ON IDS
       final filteredCourses = courses
           .where((c) => popularCourseIds.contains(c["id"]))
           .toList();
-
-      /// 🔹 FILTER BOOKS BASED ON IDS
       final filteredBooks = books
           .where((b) => popularBookIds.contains(b["id"]))
           .toList();
 
-      setState(() {
-        allCourses = courses;
-        allBooks = books;
-
-        // 🔥 BUILD SEARCH TITLE LIST
-        allTitles = [
-          ...courses.map((c) => c["title"].toString()),
-          ...books.map((b) => b["title"].toString()),
-        ];
-
-        loadingHome = false;
-        aboutText = banner["about_text"] ?? "";
-        bannerImages = List<String>.from(banner["carousel_urls"] ?? []);
-
-        allCourses = courses;
-        allBooks = books;
-
-        popularCourses = filteredCourses;
-        popularBooks = filteredBooks;
-        print(popularCourses);
-        print("-------------------------------------------------------------0");
-
-        loadingHome = false;
-      });
+      if (mounted) {
+        setState(() {
+          allCourses = courses;
+          allBooks = books;
+          allTitles = [
+            ...courses.map((c) => c["title"].toString()),
+            ...books.map((b) => b["title"].toString()),
+          ];
+          aboutText = banner["about_text"] ?? "";
+          bannerImages = List<String>.from(banner["carousel_urls"] ?? []);
+          popularCourses = filteredCourses;
+          popularBooks = filteredBooks;
+          loadingHome = false;
+          bannerLoading = false;
+        });
+      }
     } catch (e) {
-      loadingHome = false;
+      if (mounted)
+        setState(() {
+          loadingHome = false;
+          bannerLoading = false;
+        });
       debugPrint("Home load error: $e");
     }
   }
@@ -933,9 +986,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
   }
 
   Widget _buildMarquee() {
-    final text = aboutText.isNotEmpty
-        ? aboutText
-        : "! No Internet Connection or Server Error Detected !";
+    final text = aboutText.isNotEmpty ? aboutText : "  ";
 
     return Container(
       height: 32,
@@ -1020,6 +1071,66 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     );
   }
 
+  Widget _buildSkeleton() {
+    return TweenAnimationBuilder<double>(
+      tween: Tween(begin: 0.4, end: 1.0),
+      duration: const Duration(milliseconds: 800),
+      builder: (_, value, child) => Opacity(opacity: value, child: child),
+      onEnd: () {
+        if (mounted) setState(() {});
+      },
+      child: Container(
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(10),
+          gradient: LinearGradient(
+            colors: [
+              Colors.grey.shade200,
+              Colors.grey.shade100,
+              Colors.grey.shade200,
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildCourseSkeletonList() {
+    return Column(
+      children: List.generate(
+        3,
+        (_) => Padding(
+          padding: const EdgeInsets.symmetric(vertical: 8),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              ClipRRect(
+                borderRadius: BorderRadius.circular(6),
+                child: SizedBox(
+                  width: 140,
+                  height: 80,
+                  child: _buildSkeleton(),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    SizedBox(height: 14, child: _buildSkeleton()),
+                    const SizedBox(height: 6),
+                    SizedBox(width: 100, height: 10, child: _buildSkeleton()),
+                    const SizedBox(height: 6),
+                    SizedBox(width: 60, height: 12, child: _buildSkeleton()),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   void _autoScroll() {
     if (!mounted || bannerImages.isEmpty) return;
 
@@ -1099,10 +1210,6 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                         ),
                       );
                     } else {
-                      print(UserSession.getUserphonenumber().toString());
-                      print(
-                        "=============================================================0",
-                      );
                       _showNotificationPanel();
                       setState(() {
                         // Optional: clear badge after opening
@@ -1178,24 +1285,121 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                   children: [
                     const Icon(Icons.search, color: Color(0xFF0E5FD8)),
                     const SizedBox(width: 10),
-                    const Expanded(
+                    Expanded(
                       child: TextField(
+                        controller: _searchController,
+                        focusNode: _searchFocus,
+                        onChanged: (query) {
+                          setState(() {
+                            if (query.trim().isEmpty) {
+                              showSearchDropdown = false;
+                              filteredTitles = [];
+                            } else {
+                              showSearchDropdown = true;
+                              filteredTitles = allTitles
+                                  .where(
+                                    (t) => t.toLowerCase().contains(
+                                      query.toLowerCase(),
+                                    ),
+                                  )
+                                  .toList();
+                            }
+                          });
+                        },
                         decoration: InputDecoration(
                           hintText: "Search courses, books.",
                           border: InputBorder.none,
+                          suffixIcon: showSearchDropdown
+                              ? IconButton(
+                                  icon: const Icon(
+                                    Icons.close,
+                                    color: Colors.black45,
+                                  ),
+                                  onPressed: () {
+                                    _searchController.clear();
+                                    _searchFocus.unfocus();
+                                    setState(() {
+                                      showSearchDropdown = false;
+                                      filteredTitles = [];
+                                    });
+                                  },
+                                )
+                              : null,
                         ),
                       ),
                     ),
                     IconButton(
                       icon: const Icon(Icons.tune, color: Color(0xFF0E5FD8)),
-                      onPressed: () {
-                        setState(() {});
-                      },
+                      onPressed: () {},
                     ),
                   ],
                 ),
               ),
             ),
+
+            // ── SEARCH DROPDOWN ──────────────────────────
+            if (showSearchDropdown) ...[
+              Container(
+                margin: const EdgeInsets.only(top: 4),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(10),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.08),
+                      blurRadius: 12,
+                      offset: const Offset(0, 4),
+                    ),
+                  ],
+                  border: Border.all(color: const Color(0xFFE2E8F0)),
+                ),
+                child: filteredTitles.isEmpty
+                    ? const Padding(
+                        padding: EdgeInsets.all(16),
+                        child: Text(
+                          "No results found",
+                          style: TextStyle(color: Colors.black45),
+                        ),
+                      )
+                    : ListView.separated(
+                        shrinkWrap: true,
+                        physics: const NeverScrollableScrollPhysics(),
+                        itemCount: filteredTitles.length > 8
+                            ? 8
+                            : filteredTitles.length,
+                        separatorBuilder: (_, __) => const Divider(height: 1),
+                        itemBuilder: (context, i) {
+                          final title = filteredTitles[i];
+                          // find if it's a book or course
+                          final isBook = allBooks.any(
+                            (b) => b["title"] == title,
+                          );
+                          return ListTile(
+                            dense: true,
+                            leading: Icon(
+                              isBook
+                                  ? Icons.menu_book
+                                  : Icons.play_circle_outline,
+                              color: const Color(0xFF0E5FD8),
+                              size: 20,
+                            ),
+                            title: Text(
+                              title,
+                              style: const TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                            subtitle: Text(
+                              isBook ? "Book" : "Course",
+                              style: const TextStyle(fontSize: 11),
+                            ),
+                            onTap: () => _onSearchItemTap(title),
+                          );
+                        },
+                      ),
+              ),
+            ],
             const SizedBox(height: 4),
             _buildMarquee(),
             const SizedBox(height: 8),
@@ -1204,54 +1408,34 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
             // ------------------ CAROUSEL ------------------
             SizedBox(
               height: 200,
-              child: PageView.builder(
-                controller: _controller,
-                itemCount: bannerImages.length,
-                onPageChanged: (i) {
-                  setState(() => _currentIndex = i);
-                },
-                itemBuilder: (context, index) {
-                  return AnimatedPadding(
-                    duration: const Duration(milliseconds: 400),
-                    padding: EdgeInsets.symmetric(
-                      horizontal: index == _currentIndex ? 4 : 4,
-                    ),
-                    child: ClipRRect(
-                      borderRadius: BorderRadius.circular(10),
-                      child: Stack(
-                        fit: StackFit.expand,
-                        children: [
-                          // 🖼 IMAGE
-                          bannerImages.isEmpty
-                              ? const SizedBox()
-                              : ClipRRect(
-                                  borderRadius: BorderRadius.circular(10),
-                                  child: Image.network(
-                                    bannerImages[index],
-                                    fit: BoxFit.cover,
-                                    errorBuilder: (_, __, ___) =>
-                                        Container(color: Colors.grey.shade300),
-                                  ),
-                                ),
-
-                          // 🌫 DARK GRADIENT OVERLAY
-                          // Container(
-                          //   decoration: const BoxDecoration(
-                          //     gradient: LinearGradient(
-                          //       begin: Alignment.bottomCenter,
-                          //       end: Alignment.topCenter,
-                          //       colors: [Colors.black54, Colors.transparent],
-                          //     ),
-                          //   ),
-                          // ),
-
-                          // 🧠 TEXT
-                        ],
+              child: bannerLoading
+                  ? PageView.builder(
+                      itemCount: 3,
+                      itemBuilder: (_, __) => Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 4),
+                        child: _buildSkeleton(),
                       ),
+                    )
+                  : PageView.builder(
+                      controller: _controller,
+                      itemCount: bannerImages.length,
+                      onPageChanged: (i) => setState(() => _currentIndex = i),
+                      itemBuilder: (context, index) {
+                        return AnimatedPadding(
+                          duration: const Duration(milliseconds: 400),
+                          padding: const EdgeInsets.symmetric(horizontal: 4),
+                          child: ClipRRect(
+                            borderRadius: BorderRadius.circular(10),
+                            child: Image.network(
+                              bannerImages[index],
+                              fit: BoxFit.cover,
+                              errorBuilder: (_, __, ___) =>
+                                  Container(color: Colors.grey.shade300),
+                            ),
+                          ),
+                        );
+                      },
                     ),
-                  );
-                },
-              ),
             ),
 
             const SizedBox(height: 5),
@@ -1587,139 +1771,135 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
 
             /// Courses
             /// ---------------- POPULAR COURSES ----------------
+            // Popular Courses
+            /// Popular Courses
             const Text(
               "Popular Courses",
               style: TextStyle(fontSize: 20, fontWeight: FontWeight.w600),
             ),
             const SizedBox(height: 6),
 
-            ...popularCourses.map((course) {
-              final thumbnail =
-                  (course["thumbnail_url"] != null &&
-                      course["thumbnail_url"].toString().isNotEmpty)
-                  ? course["thumbnail_url"]
-                  : "https://via.placeholder.com/300x180.png?text=No+Image";
+            loadingHome
+                ? _buildCourseSkeletonList()
+                : Column(
+                    children: popularCourses.map((course) {
+                      final thumbnail =
+                          (course["thumbnail_url"] != null &&
+                              course["thumbnail_url"].toString().isNotEmpty)
+                          ? course["thumbnail_url"]
+                          : "https://via.placeholder.com/300x180.png?text=No+Image";
 
-              return InkWell(
-                onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => CourseDetailScreen(
-                        data: course,
-                        option: "course",
-                        isLocked: true,
-                      ),
-                    ),
-                  );
-                },
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 8),
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      // 🖼 Thumbnail (UNCHANGED)
-                      ClipRRect(
-                        borderRadius: BorderRadius.circular(6),
-                        child: Stack(
-                          alignment: Alignment.center,
-                          children: [
-                            Image.network(
-                              thumbnail,
-                              width: 140,
-                              height: 80,
-                              fit: BoxFit.cover,
-                              errorBuilder: (_, __, ___) => Container(
-                                width: 140,
-                                height: 80,
-                                color: Colors.grey.shade300,
-                                child: const Icon(Icons.image_not_supported),
+                      return InkWell(
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => CourseDetailScreen(
+                                data: course,
+                                option: "course",
+                                isLocked: true,
                               ),
                             ),
-                            Container(
-                              width: 140,
-                              height: 80,
-                              color: Colors.black.withOpacity(0.15),
-                            ),
-                            Container(
-                              width: 36,
-                              height: 36,
-                              decoration: BoxDecoration(
-                                color: Colors.black.withOpacity(0.55),
-                                shape: BoxShape.circle,
-                              ),
-                              child: const Icon(
-                                Icons.play_arrow,
-                                color: Colors.white,
-                                size: 22,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-
-                      const SizedBox(width: 12),
-
-                      // 📄 Details
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              course["title"] ?? "",
-                              maxLines: 2,
-                              overflow: TextOverflow.ellipsis,
-                              style: const TextStyle(
-                                fontSize: 14.5,
-                                fontWeight: FontWeight.w600,
-                                color: Color(0xFF1F3C68),
-                              ),
-                            ),
-                            const SizedBox(height: 4),
-                            Text(
-                              "${course["videos"]?.length ?? 0} videos • Full access",
-                              style: const TextStyle(
-                                fontSize: 12,
-                                color: Colors.black45,
-                              ),
-                            ),
-                            const SizedBox(height: 6),
-                            Text(
-                              "₹${course["price"] ?? ""}",
-                              style: const TextStyle(
-                                fontSize: 14,
-                                fontWeight: FontWeight.bold,
-                                color: Color(0xFF0E5FD8),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-
-                      // ⋮ YOUTUBE STYLE MENU (NEW)
-                      PopupMenuButton<String>(
-                        padding: EdgeInsets.zero,
-                        icon: const Icon(
-                          Icons.more_vert,
-                          size: 20,
-                          color: Colors.black54,
-                        ),
-                        onSelected: (value) {
-                          if (value == "save") {
-                            // save course
-                          } else if (value == "share") {
-                            // share course
-                          }
+                          );
                         },
-                        itemBuilder: (context) => const [],
-                      ),
-                    ],
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 8),
+                          child: Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              ClipRRect(
+                                borderRadius: BorderRadius.circular(6),
+                                child: Stack(
+                                  alignment: Alignment.center,
+                                  children: [
+                                    Image.network(
+                                      thumbnail,
+                                      width: 140,
+                                      height: 80,
+                                      fit: BoxFit.cover,
+                                      errorBuilder: (_, __, ___) => Container(
+                                        width: 140,
+                                        height: 80,
+                                        color: Colors.grey.shade300,
+                                        child: const Icon(
+                                          Icons.image_not_supported,
+                                        ),
+                                      ),
+                                    ),
+                                    Container(
+                                      width: 140,
+                                      height: 80,
+                                      color: Colors.black.withOpacity(0.15),
+                                    ),
+                                    Container(
+                                      width: 36,
+                                      height: 36,
+                                      decoration: BoxDecoration(
+                                        color: Colors.black.withOpacity(0.55),
+                                        shape: BoxShape.circle,
+                                      ),
+                                      child: const Icon(
+                                        Icons.play_arrow,
+                                        color: Colors.white,
+                                        size: 22,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      course["title"] ?? "",
+                                      maxLines: 2,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: const TextStyle(
+                                        fontSize: 14.5,
+                                        fontWeight: FontWeight.w600,
+                                        color: Color(0xFF1F3C68),
+                                      ),
+                                    ),
+                                    const SizedBox(height: 4),
+                                    Text(
+                                      "${course["videos"]?.length ?? 0} videos • Full access",
+                                      style: const TextStyle(
+                                        fontSize: 12,
+                                        color: Colors.black45,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 6),
+                                    Text(
+                                      "₹${course["price"] ?? ""}",
+                                      style: const TextStyle(
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.bold,
+                                        color: Color(0xFF0E5FD8),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              PopupMenuButton<String>(
+                                padding: EdgeInsets.zero,
+                                icon: const Icon(
+                                  Icons.more_vert,
+                                  size: 20,
+                                  color: Colors.black54,
+                                ),
+                                onSelected: (value) {},
+                                itemBuilder: (context) => const [],
+                              ),
+                            ],
+                          ),
+                        ),
+                      );
+                    }).toList(),
                   ),
-                ),
-              );
-            }).toList(),
 
-            /// ---------------- POPULAR BOOKS ----------------
+            /// Popular Books
             const SizedBox(height: 14),
             const Text(
               "Popular Books",
@@ -1727,131 +1907,125 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
             ),
             const SizedBox(height: 6),
 
-            ...popularBooks.map((book) {
-              final thumbnail =
-                  (book["thumbnail_url"] != null &&
-                      book["thumbnail_url"].toString().isNotEmpty)
-                  ? book["thumbnail_url"]
-                  : "https://via.placeholder.com/300x180.png?text=No+Image";
+            loadingHome
+                ? _buildCourseSkeletonList()
+                : Column(
+                    children: popularBooks.map((book) {
+                      final thumbnail =
+                          (book["thumbnail_url"] != null &&
+                              book["thumbnail_url"].toString().isNotEmpty)
+                          ? book["thumbnail_url"]
+                          : "https://via.placeholder.com/300x180.png?text=No+Image";
 
-              return InkWell(
-                onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => CourseDetailScreen(
-                        data: book,
-                        option: "book",
-                        isLocked: true,
-                      ),
-                    ),
-                  );
-                },
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 8),
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      // 🖼 Thumbnail (UNCHANGED)
-                      ClipRRect(
-                        borderRadius: BorderRadius.circular(6),
-                        child: Stack(
-                          alignment: Alignment.center,
-                          children: [
-                            Image.network(
-                              thumbnail,
-                              width: 140,
-                              height: 80,
-                              fit: BoxFit.cover,
-                              errorBuilder: (_, __, ___) => Container(
-                                width: 140,
-                                height: 80,
-                                color: Colors.grey.shade300,
-                                child: const Icon(Icons.image_not_supported),
+                      return InkWell(
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => CourseDetailScreen(
+                                data: book,
+                                option: "book",
+                                isLocked: true,
                               ),
                             ),
-                            Container(
-                              width: 140,
-                              height: 80,
-                              color: Colors.black.withOpacity(0.15),
-                            ),
-                            Container(
-                              width: 36,
-                              height: 36,
-                              decoration: BoxDecoration(
-                                color: Colors.black.withOpacity(0.55),
-                                shape: BoxShape.circle,
-                              ),
-                              child: const Icon(
-                                Icons.picture_as_pdf,
-                                color: Colors.white,
-                                size: 20,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-
-                      const SizedBox(width: 12),
-
-                      // 📄 Details
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              book["title"] ?? "",
-                              maxLines: 2,
-                              overflow: TextOverflow.ellipsis,
-                              style: const TextStyle(
-                                fontSize: 14.5,
-                                fontWeight: FontWeight.w600,
-                                color: Color(0xFF1F3C68),
-                              ),
-                            ),
-                            const SizedBox(height: 4),
-                            Text(
-                              "${book["pdfs"]?.length ?? 0} PDFs • Digital Book",
-                              style: const TextStyle(
-                                fontSize: 12,
-                                color: Colors.black45,
-                              ),
-                            ),
-                            const SizedBox(height: 6),
-                            Text(
-                              "₹${book["price"] ?? ""}",
-                              style: const TextStyle(
-                                fontSize: 14,
-                                fontWeight: FontWeight.bold,
-                                color: Color(0xFF0E5FD8),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-
-                      // ⋮ YOUTUBE STYLE MENU (NEW)
-                      PopupMenuButton<String>(
-                        padding: EdgeInsets.zero,
-                        icon: const Icon(
-                          Icons.more_vert,
-                          size: 20,
-                          color: Colors.black54,
-                        ),
-                        onSelected: (value) {
-                          if (value == "save") {
-                            // save book
-                          } else if (value == "share") {
-                            // share book
-                          }
+                          );
                         },
-                        itemBuilder: (context) => const [],
-                      ),
-                    ],
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 8),
+                          child: Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              ClipRRect(
+                                borderRadius: BorderRadius.circular(6),
+                                child: Stack(
+                                  alignment: Alignment.center,
+                                  children: [
+                                    Image.network(
+                                      thumbnail,
+                                      width: 140,
+                                      height: 80,
+                                      fit: BoxFit.cover,
+                                      errorBuilder: (_, __, ___) => Container(
+                                        width: 140,
+                                        height: 80,
+                                        color: Colors.grey.shade300,
+                                        child: const Icon(
+                                          Icons.image_not_supported,
+                                        ),
+                                      ),
+                                    ),
+                                    Container(
+                                      width: 140,
+                                      height: 80,
+                                      color: Colors.black.withOpacity(0.15),
+                                    ),
+                                    Container(
+                                      width: 36,
+                                      height: 36,
+                                      decoration: BoxDecoration(
+                                        color: Colors.black.withOpacity(0.55),
+                                        shape: BoxShape.circle,
+                                      ),
+                                      child: const Icon(
+                                        Icons.picture_as_pdf,
+                                        color: Colors.white,
+                                        size: 20,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      book["title"] ?? "",
+                                      maxLines: 2,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: const TextStyle(
+                                        fontSize: 14.5,
+                                        fontWeight: FontWeight.w600,
+                                        color: Color(0xFF1F3C68),
+                                      ),
+                                    ),
+                                    const SizedBox(height: 4),
+                                    Text(
+                                      "${book["pdfs"]?.length ?? 0} PDFs • Digital Book",
+                                      style: const TextStyle(
+                                        fontSize: 12,
+                                        color: Colors.black45,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 6),
+                                    Text(
+                                      "₹${book["price"] ?? ""}",
+                                      style: const TextStyle(
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.bold,
+                                        color: Color(0xFF0E5FD8),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              PopupMenuButton<String>(
+                                padding: EdgeInsets.zero,
+                                icon: const Icon(
+                                  Icons.more_vert,
+                                  size: 20,
+                                  color: Colors.black54,
+                                ),
+                                onSelected: (value) {},
+                                itemBuilder: (context) => const [],
+                              ),
+                            ],
+                          ),
+                        ),
+                      );
+                    }).toList(),
                   ),
-                ),
-              );
-            }).toList(),
             //    SizedBox(height: 100),
           ],
         ),

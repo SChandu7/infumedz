@@ -130,6 +130,12 @@ class _FoundersSection extends StatelessWidget {
           education: "Technology & Operations",
           imageUrl: "assets/infumedz3.jpg",
         ),
+        _TeamCard(
+          name: "S Chandra Sekhar",
+          role: "App Developer & Software developer",
+          education: "Reach me @www.chandus7.in",
+          imageUrl: "assets/dev.jpeg",
+        ),
       ],
     );
   }

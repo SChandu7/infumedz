@@ -47,6 +47,144 @@ class _LibraryPageState extends State<LibraryPage> {
     };
   }
 
+  Widget _shimmerBox({double? width, double? height, double radius = 8}) {
+    return TweenAnimationBuilder<double>(
+      tween: Tween(begin: 0.3, end: 1.0),
+      duration: const Duration(milliseconds: 900),
+      builder: (_, value, child) => Opacity(opacity: value, child: child),
+      onEnd: () {
+        if (mounted) setState(() {});
+      },
+      child: Container(
+        width: width,
+        height: height,
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(radius),
+          gradient: LinearGradient(
+            colors: [
+              const Color(0xFFE8EDF5),
+              const Color(0xFFF5F7FA),
+              const Color(0xFFE8EDF5),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildLibrarySkeleton() {
+    return ListView(
+      padding: const EdgeInsets.all(16),
+      children: [
+        // ── Stats row skeleton ──
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceAround,
+          children: List.generate(
+            3,
+            (_) => Column(
+              children: [
+                _shimmerBox(width: 40, height: 26),
+                const SizedBox(height: 6),
+                _shimmerBox(width: 60, height: 12),
+              ],
+            ),
+          ),
+        ),
+
+        const SizedBox(height: 24),
+
+        // ── Section title ──
+        _shimmerBox(width: 120, height: 18),
+        const SizedBox(height: 14),
+
+        // ── Course cards ──
+        ...List.generate(
+          3,
+          (_) => Container(
+            margin: const EdgeInsets.only(bottom: 14),
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(14),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.04),
+                  blurRadius: 8,
+                  offset: const Offset(0, 4),
+                ),
+              ],
+            ),
+            child: Row(
+              children: [
+                // thumbnail
+                _shimmerBox(width: 90, height: 70, radius: 10),
+                const SizedBox(width: 12),
+                // title lines
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _shimmerBox(height: 14, width: double.infinity),
+                      const SizedBox(height: 8),
+                      _shimmerBox(height: 14, width: 140),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 10),
+                // button
+                _shimmerBox(width: 60, height: 34, radius: 8),
+              ],
+            ),
+          ),
+        ),
+
+        const SizedBox(height: 10),
+
+        // ── Books section title ──
+        _shimmerBox(width: 100, height: 18),
+        const SizedBox(height: 14),
+
+        // ── Book cards ──
+        ...List.generate(
+          2,
+          (_) => Container(
+            margin: const EdgeInsets.only(bottom: 14),
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(14),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.04),
+                  blurRadius: 8,
+                  offset: const Offset(0, 4),
+                ),
+              ],
+            ),
+            child: Row(
+              children: [
+                _shimmerBox(width: 90, height: 70, radius: 10),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _shimmerBox(height: 14, width: double.infinity),
+                      const SizedBox(height: 8),
+                      _shimmerBox(height: 14, width: 120),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 10),
+                _shimmerBox(width: 60, height: 34, radius: 8),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -63,7 +201,7 @@ class _LibraryPageState extends State<LibraryPage> {
         future: _future,
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator());
+            return _buildLibrarySkeleton();
           }
 
           if (snapshot.hasError) {
