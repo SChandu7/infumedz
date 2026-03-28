@@ -2,30 +2,51 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
+    <key>CFBundleDevelopmentRegion</key>
+    <string>$(DEVELOPMENT_LANGUAGE)</string>
 
     <key>CFBundleDisplayName</key>
-    <string>Inforedz</string>
-
-    <key>CFBundleIdentifier</key>
-    <string>com.inforedz.app</string>
-
-    <key>CFBundleShortVersionString</key>
-    <string>1.0.0</string>
-
-    <key>CFBundleVersion</key>
-    <string>1</string>
-
-    <key>CFBundlePackageType</key>
-    <string>APPL</string>
-
-    <key>MinimumOSVersion</key>
-    <string>14.0</string>
+    <string>InfuMedz</string>
 
     <key>CFBundleExecutable</key>
     <string>$(EXECUTABLE_NAME)</string>
 
+    <key>CFBundleIdentifier</key>
+    <string>$(PRODUCT_BUNDLE_IDENTIFIER)</string>
+
+    <key>CFBundleInfoDictionaryVersion</key>
+    <string>6.0</string>
+
+    <key>CFBundleName</key>
+    <string>InfuMedz</string>
+
+    <key>CFBundlePackageType</key>
+    <string>APPL</string>
+
+    <key>CFBundleShortVersionString</key>
+    <string>$(FLUTTER_BUILD_NAME)</string>
+
+    <key>CFBundleSignature</key>
+    <string>????</string>
+
+    <key>CFBundleVersion</key>
+    <string>$(FLUTTER_BUILD_NUMBER)</string>
+
+    <key>CFBundleURLTypes</key>
+    <array>
+        <dict>
+            <key>CFBundleURLSchemes</key>
+            <array>
+                <string>com.infumedz.app</string>
+            </array>
+        </dict>
+    </array>
+
     <key>LSRequiresIPhoneOS</key>
     <true/>
+
+    <key>ITSAppUsesNonExemptEncryption</key>
+    <false/>
 
     <key>UILaunchStoryboardName</key>
     <string>LaunchScreen</string>
@@ -48,29 +69,37 @@
         <string>UIInterfaceOrientationLandscapeRight</string>
     </array>
 
-    <key>UIViewControllerBasedStatusBarAppearance</key>
-    <false/>
-
     <key>CADisableMinimumFrameDurationOnPhone</key>
     <true/>
 
     <key>UIApplicationSupportsIndirectInputEvents</key>
     <true/>
 
-    <key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
-    <string>This app uses your location to provide relevant medical content and services near you.</string>
-
-    <key>NSLocationWhenInUseUsageDescription</key>
-    <string>This app uses your location to provide relevant medical content and services near you.</string>
+    <key>UIViewControllerBasedStatusBarAppearance</key>
+    <false/>
 
     <key>NSCameraUsageDescription</key>
-    <string>This app uses the camera to allow you to upload profile and content images.</string>
+    <string>This app uses the camera to capture and upload medical images and reports.</string>
 
     <key>NSPhotoLibraryUsageDescription</key>
-    <string>This app accesses your photo library to allow you to upload images.</string>
+    <string>This app accesses your photo library to upload medical images and reports.</string>
 
     <key>NSMicrophoneUsageDescription</key>
-    <string>This app uses the microphone for video recording features.</string>
+    <string>This app uses the microphone for video lecture recording features.</string>
+
+    <key>NSLocationWhenInUseUsageDescription</key>
+    <string>This app uses your location to provide relevant medical content near you.</string>
+
+    <key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
+    <string>This app uses your location to provide relevant medical content near you.</string>
+
+    <key>SKAdNetworkItems</key>
+    <array>
+        <dict>
+            <key>SKAdNetworkIdentifier</key>
+            <string>cstr6suwn9.skadnetwork</string>
+        </dict>
+    </array>
 
 </dict>
 </plist>

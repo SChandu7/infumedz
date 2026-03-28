@@ -12,7 +12,6 @@ import 'package:video_player/video_player.dart';
 import 'cart.dart';
 import 'main.dart';
 import 'dart:io' show Platform;
-import 'package:in_app_purchase/in_app_purchase.dart';
 import 'package:share_plus/share_plus.dart';
 
 class MedicalStoreScreen extends StatefulWidget {
@@ -877,11 +876,7 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
   String? _email;
   bool _isAdmin = false;
   // ADD below existing Razorpay fields
-  final InAppPurchase _iap = InAppPurchase.instance;
-  bool _iapAvailable = false;
-  List<ProductDetails> _products = [];
-  StreamSubscription<List<PurchaseDetails>>? _iapSubscription;
-  bool _purchaseLoading = false;
+
   int selectedRating = 5;
   TextEditingController reviewController = TextEditingController();
   bool isSubmittingReview = false;
@@ -1094,39 +1089,8 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
   @override
   void dispose() {
     _razorpay.clear();
-    _iapSubscription?.cancel(); // ADD
 
     super.dispose();
-  }
-
-  Future<void> _initIAP() async {
-    _iapAvailable = await _iap.isAvailable();
-    if (!_iapAvailable) return;
-
-    // Product IDs must match exactly what you create in
-    // App Store Connect → your app → In-App Purchases
-    final String productId = _getIAPProductId(widget.data["price"]);
-
-    final response = await _iap.queryProductDetails({productId});
-    if (response.productDetails.isNotEmpty) {
-      setState(() => _products = response.productDetails);
-    }
-
-    _iapSubscription = _iap.purchaseStream.listen(
-      _onIAPPurchaseUpdate,
-      onDone: () => _iapSubscription?.cancel(),
-      onError: (e) => debugPrint("IAP stream error: $e"),
-    );
-  }
-
-  // ADD this method inside _CourseDetailScreenState
-  String _getIAPProductId(dynamic price) {
-    final int p = int.tryParse(price.toString().split('.').first) ?? 0;
-    if (p <= 199) return "com.infumedz.tier1";
-    if (p <= 499) return "com.infumedz.tier2";
-    if (p <= 999) return "com.infumedz.tier3";
-    if (p <= 1499) return "com.infumedz.tier4";
-    return "com.infumedz.tier5";
   }
 
   // BEFORE — two separate methods buyCourse() and startPayment()
@@ -1178,48 +1142,6 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
       _orderId = data["order_id"];
       _openRazorpay(data["key"]); // existing method — no change
     }
-  }
-
-  void _onIAPPurchaseUpdate(List<PurchaseDetails> purchases) async {
-    for (final purchase in purchases) {
-      if (purchase.status == PurchaseStatus.purchased ||
-          purchase.status == PurchaseStatus.restored) {
-        await _verifyIAPWithBackend(purchase);
-        await _iap.completePurchase(purchase);
-        setState(() {
-          widget.isLocked = false;
-          _purchaseLoading = false;
-        });
-      } else if (purchase.status == PurchaseStatus.error) {
-        setState(() => _purchaseLoading = false);
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(purchase.error?.message ?? "Purchase failed"),
-            ),
-          );
-        }
-      } else if (purchase.status == PurchaseStatus.pending) {
-        setState(() => _purchaseLoading = true);
-      }
-    }
-  }
-
-  // REPLACE the entire _verifyIAPWithBackend method with this:
-  Future<void> _verifyIAPWithBackend(PurchaseDetails purchase) async {
-    final userId = await UserSession.getUserId();
-    await http.post(
-      Uri.parse("https://api.chandus7.in/api/infumedz/payment/verify-iap/"),
-      headers: {"Content-Type": "application/json"},
-      body: jsonEncode({
-        "user_id": userId,
-        "product_id": purchase.productID, // tier — for Apple verification
-        "purchase_token": purchase.verificationData.serverVerificationData,
-        "platform": "ios",
-        "item_type": widget.option == "Books" ? "book" : "course",
-        "item_id": widget.data["id"], // actual course/book UUID — for DB unlock
-      }),
-    );
   }
 
   // =====================================================
@@ -1427,9 +1349,9 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
                 onPressed: () {
                   final id = widget.data["id"];
                   final name = widget.data["title"];
-                  final link = "https://chandus7.in/course/$id";
+                  final link = "https://www.chandus7.in/course/$id";
 
-                  Share.share("Check this course: $name \n$link");
+                  Share.share("Check this course on InfuMedz: $name \n$link");
                 },
               ),
             ],

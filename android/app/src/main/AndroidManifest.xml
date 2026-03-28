@@ -44,7 +44,7 @@
 
     <data
         android:scheme="https"
-        android:host="chandus7.in"
+        android:host="www.chandus7.in"
         android:pathPrefix="/course/"/>
 </intent-filter>
 
