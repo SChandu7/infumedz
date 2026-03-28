@@ -1313,24 +1313,15 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
                           ),
                         )
                       : ElevatedButton(
-                          onPressed: _purchaseLoading ? null : startPayment,
-                          child: _purchaseLoading
-                              ? const SizedBox(
-                                  height: 20,
-                                  width: 20,
-                                  child: CircularProgressIndicator(
-                                    color: Colors.blueAccent,
-                                    strokeWidth: 2,
-                                  ),
-                                )
-                              : Text(
-                                  "Buy • ${widget.data["price"] ?? "0"}",
-                                  style: const TextStyle(
-                                    fontSize: 15,
-                                    fontWeight: FontWeight.w700,
-                                    color: Colors.blueAccent,
-                                  ),
-                                ),
+                         onPressed: startPayment,
+child: Text(
+  "Buy • ${widget.data["price"] ?? "0"}",
+  style: const TextStyle(
+    fontSize: 15,
+    fontWeight: FontWeight.w700,
+    color: Colors.blueAccent,
+  ),
+),
                         );
                 },
               ),
