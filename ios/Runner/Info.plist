@@ -3,86 +3,74 @@
 <plist version="1.0">
 <dict>
 
-	<key>CFBundleDevelopmentRegion</key>
-	<string>$(DEVELOPMENT_LANGUAGE)</string>
+    <key>CFBundleDisplayName</key>
+    <string>Inforedz</string>
 
-	<key>CFBundleDisplayName</key>
-	<string>Infumedz</string>
+    <key>CFBundleIdentifier</key>
+    <string>com.inforedz.app</string>
 
-	<key>CFBundleExecutable</key>
-	<string>$(EXECUTABLE_NAME)</string>
+    <key>CFBundleShortVersionString</key>
+    <string>1.0.0</string>
 
-	<key>CFBundleIdentifier</key>
-	<string>$(PRODUCT_BUNDLE_IDENTIFIER)</string>
+    <key>CFBundleVersion</key>
+    <string>1</string>
 
-	<key>CFBundleInfoDictionaryVersion</key>
-	<string>6.0</string>
+    <key>CFBundlePackageType</key>
+    <string>APPL</string>
 
-	<key>CFBundleURLTypes</key>
-<array>
-    <dict>
-        <key>CFBundleURLSchemes</key>
-        <array>
-            <string>com.infumedz.app</string>  <!-- update this -->
-        </array>
-    </dict>
-</array>
-<key>BUNDLE_ID</key>
-<string>com.infumedz.app</string>  <!-- must match -->
+    <key>MinimumOSVersion</key>
+    <string>14.0</string>
 
-	<key>CFBundleName</key>
-	<string>infumedz</string>
+    <key>CFBundleExecutable</key>
+    <string>$(EXECUTABLE_NAME)</string>
 
-	<key>CFBundlePackageType</key>
-	<string>APPL</string>
+    <key>LSRequiresIPhoneOS</key>
+    <true/>
 
-	<key>CFBundleShortVersionString</key>
-	<string>$(FLUTTER_BUILD_NAME)</string>
+    <key>UILaunchStoryboardName</key>
+    <string>LaunchScreen</string>
 
-	<key>CFBundleSignature</key>
-	<string>????</string>
+    <key>UIMainStoryboardFile</key>
+    <string>Main</string>
 
-	<key>CFBundleVersion</key>
-	<string>$(FLUTTER_BUILD_NUMBER)</string>
+    <key>UISupportedInterfaceOrientations</key>
+    <array>
+        <string>UIInterfaceOrientationPortrait</string>
+        <string>UIInterfaceOrientationLandscapeLeft</string>
+        <string>UIInterfaceOrientationLandscapeRight</string>
+    </array>
 
-	<key>LSRequiresIPhoneOS</key>
-	<true/>
+    <key>UISupportedInterfaceOrientations~ipad</key>
+    <array>
+        <string>UIInterfaceOrientationPortrait</string>
+        <string>UIInterfaceOrientationPortraitUpsideDown</string>
+        <string>UIInterfaceOrientationLandscapeLeft</string>
+        <string>UIInterfaceOrientationLandscapeRight</string>
+    </array>
 
-	<key>UILaunchStoryboardName</key>
-	<string>LaunchScreen</string>
+    <key>UIViewControllerBasedStatusBarAppearance</key>
+    <false/>
 
-	<key>UIMainStoryboardFile</key>
-	<string>Main</string>
+    <key>CADisableMinimumFrameDurationOnPhone</key>
+    <true/>
 
-	<key>UISupportedInterfaceOrientations</key>
-	<array>
-		<string>UIInterfaceOrientationPortrait</string>
-		<string>UIInterfaceOrientationLandscapeLeft</string>
-		<string>UIInterfaceOrientationLandscapeRight</string>
-	</array>
-	<key>ITSAppUsesNonExemptEncryption</key>
-<false/>
+    <key>UIApplicationSupportsIndirectInputEvents</key>
+    <true/>
 
-	<key>UISupportedInterfaceOrientations~ipad</key>
-	<array>
-		<string>UIInterfaceOrientationPortrait</string>
-		<string>UIInterfaceOrientationPortraitUpsideDown</string>
-		<string>UIInterfaceOrientationLandscapeLeft</string>
-		<string>UIInterfaceOrientationLandscapeRight</string>
-	</array>
+    <key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
+    <string>This app uses your location to provide relevant medical content and services near you.</string>
 
-	<key>CADisableMinimumFrameDurationOnPhone</key>
-	<true/>
+    <key>NSLocationWhenInUseUsageDescription</key>
+    <string>This app uses your location to provide relevant medical content and services near you.</string>
 
-	<key>UIApplicationSupportsIndirectInputEvents</key>
-	<true/>
+    <key>NSCameraUsageDescription</key>
+    <string>This app uses the camera to allow you to upload profile and content images.</string>
 
-	<!-- ✅ ADD THESE -->
-	<key>NSPhotoLibraryUsageDescription</key>
-	<string>This app needs access to your photo library to upload medical reports and images.</string>
+    <key>NSPhotoLibraryUsageDescription</key>
+    <string>This app accesses your photo library to allow you to upload images.</string>
 
-	<key>NSCameraUsageDescription</key>
-	<string>This app needs camera access to capture medical images and reports.</string>
+    <key>NSMicrophoneUsageDescription</key>
+    <string>This app uses the microphone for video recording features.</string>
 
 </dict>
 </plist>

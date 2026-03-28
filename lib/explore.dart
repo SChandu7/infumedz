@@ -951,9 +951,7 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
     _razorpay.on(Razorpay.EVENT_PAYMENT_ERROR, _onError);
     print(widget.data);
 
-    if (Platform.isIOS) {
-      _initIAP();
-    }
+    if (Platform.isIOS) {}
 
     print(widget.data);
     if (widget.option == "Books") {
@@ -1145,22 +1143,13 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
     }
 
     if (Platform.isIOS) {
-      // ── iOS: Apple IAP ──
-      if (!_iapAvailable) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(const SnackBar(content: Text("Store not available")));
-        return;
-      }
-      if (_products.isEmpty) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("Product not found in App Store")),
-        );
-        return;
-      }
-      setState(() => _purchaseLoading = true);
-      final purchaseParam = PurchaseParam(productDetails: _products.first);
-      await _iap.buyNonConsumable(purchaseParam: purchaseParam);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text("Please visit our website to enroll"),
+          duration: Duration(seconds: 2),
+        ),
+      );
+      return;
     } else {
       // ── Android: Razorpay (existing logic) ──
       final isBook = widget.option == "Books";
@@ -1380,26 +1369,47 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
                   }
 
                   // 💳 NOT PURCHASED → SHOW BUY BUTTON
-                  return ElevatedButton(
-                    onPressed: _purchaseLoading ? null : startPayment,
-                    child: _purchaseLoading
-                        ? const SizedBox(
-                            height: 20,
-                            width: 20,
-                            child: CircularProgressIndicator(
-                              color: Colors.blueAccent,
-                              strokeWidth: 2,
-                            ),
-                          )
-                        : Text(
-                            "Buy • ${widget.data["price"] ?? "0"}",
-                            style: const TextStyle(
+                  return Platform.isIOS
+                      ? ElevatedButton(
+                          onPressed: () {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text(
+                                  "Please visit our website to enroll",
+                                ),
+                                duration: Duration(seconds: 2),
+                              ),
+                            );
+                          },
+                          child: const Text(
+                            "Enroll via Website",
+                            style: TextStyle(
                               fontSize: 15,
                               fontWeight: FontWeight.w700,
                               color: Colors.blueAccent,
                             ),
                           ),
-                  );
+                        )
+                      : ElevatedButton(
+                          onPressed: _purchaseLoading ? null : startPayment,
+                          child: _purchaseLoading
+                              ? const SizedBox(
+                                  height: 20,
+                                  width: 20,
+                                  child: CircularProgressIndicator(
+                                    color: Colors.blueAccent,
+                                    strokeWidth: 2,
+                                  ),
+                                )
+                              : Text(
+                                  "Buy • ${widget.data["price"] ?? "0"}",
+                                  style: const TextStyle(
+                                    fontSize: 15,
+                                    fontWeight: FontWeight.w700,
+                                    color: Colors.blueAccent,
+                                  ),
+                                ),
+                        );
                 },
               ),
             ),

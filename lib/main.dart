@@ -59,11 +59,12 @@ Future<void> main() async {
   );
 
   runApp(
-    DevicePreview(
-      // ← runApp() ADDED
-      enabled: false,
-      builder: (context) => const InfuMedzApp(),
-    ),
+    Platform.isIOS
+        ? const InfuMedzApp()
+        : DevicePreview(
+            enabled: false,
+            builder: (context) => const InfuMedzApp(),
+          ),
   );
 }
 
