@@ -11,7 +11,7 @@ import 'package:infumedz/aboutus.dart';
 import 'package:infumedz/chat.dart';
 import 'package:infumedz/loginsignup.dart';
 import 'package:infumedz/user.dart';
-import 'dart:async';
+
 import 'admin.dart';
 import 'explore.dart' hide UserChatScreen;
 import 'thesis.dart';
@@ -40,12 +40,24 @@ class ApiConfig {
 }
 
 Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
+  
+
+  try {
   await Firebase.initializeApp();
+} catch (e) {
+  debugPrint("Firebase init failed: $e");
+}
 }
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await Firebase.initializeApp(); // ← only ONCE
+
+
+  try {
+  await Firebase.initializeApp();
+} catch (e) {
+  debugPrint("Firebase init failed: $e");
+}
 
   FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
 
