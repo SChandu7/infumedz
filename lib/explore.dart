@@ -588,7 +588,9 @@ class _MedicalStoreScreenState extends State<MedicalStoreScreen> {
                           data: {
                             "title": item["title"],
                             "image": item["thumbnail_url"],
-                            "price": "₹${item["price"]}",
+                            "price": Platform.isIOS
+                                ? "Free"
+                                : "₹${item["price"]}", // ✅
                             "learners": item["learners"] ?? "",
                             "videos": item["videos"] ?? [],
                           },
@@ -972,6 +974,15 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
   }
 
   Future<void> checkAccess() async {
+    // ✅ iOS gets free access always
+    if (Platform.isIOS) {
+      setState(() {
+        hasAccess = true;
+        checkingAccess = false;
+        widget.isLocked = false;
+      });
+      return;
+    }
     final userId = await UserSession.getUserId();
 
     if (userId == null) {

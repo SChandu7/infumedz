@@ -5,6 +5,7 @@ import 'package:infumedz/main.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:http/http.dart' as http;
 import 'loginsignup.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 /// =======================================================
 /// USER SESSION (FIXED KEYS)
@@ -307,6 +308,66 @@ class _AccountCard extends StatelessWidget {
     showDialog(context: context, builder: (_) => const UserAccountDialog());
   }
 
+  void _showDeleteAccountDialog(BuildContext context) {
+    // ✅ add context param
+    showDialog(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text("Delete Account"),
+        content: const Text(
+          "Are you sure you want to delete your account? "
+          "This action is permanent and cannot be undone. "
+          "All your data will be deleted.",
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text("Cancel"),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+            onPressed: () async {
+              Navigator.pop(context);
+              await _deleteAccount(context); // ✅ pass context
+            },
+            child: const Text(
+              "Delete Account",
+              style: TextStyle(color: Colors.white),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _deleteAccount(BuildContext context) async {
+    // ✅ add context param
+    final userId = await UserSession.getUserId();
+
+    final res = await http.delete(
+      Uri.parse("https://api.chandus7.in/api/infumedz/user/delete/$userId/"),
+      headers: {"Content-Type": "application/json"},
+    );
+
+    if (res.statusCode == 200) {
+      await UserSession.logout();
+      if (context.mounted) {
+        // ✅ check mounted before using context
+        Navigator.pushAndRemoveUntil(
+          context,
+          MaterialPageRoute(builder: (_) => const LoginPage()),
+          (route) => false,
+        );
+      }
+    } else {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("Failed to delete account. Try again.")),
+        );
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Container(
@@ -327,8 +388,83 @@ class _AccountCard extends StatelessWidget {
               ),
             );
           }),
+          // REPLACE the settings tile with:
           const _Divider(),
-          _Tile(Icons.settings_outlined, "Settings", () {}),
+          _Tile(Icons.settings_outlined, "Settings", () {
+            showModalBottomSheet(
+              context: context,
+              isScrollControlled: true,
+              backgroundColor: Colors.transparent,
+              builder: (_) => Container(
+                padding: const EdgeInsets.fromLTRB(20, 24, 20, 40),
+                decoration: const BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Handle bar
+                    Center(
+                      child: Container(
+                        width: 40,
+                        height: 4,
+                        decoration: BoxDecoration(
+                          color: Colors.grey.shade300,
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+                    const Text(
+                      "Settings",
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+                    const Divider(),
+                    ListTile(
+                      contentPadding: EdgeInsets.zero,
+                      leading: Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: Colors.red.shade50,
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: const Icon(
+                          Icons.delete_forever_outlined,
+                          color: Colors.red,
+                        ),
+                      ),
+                      title: const Text(
+                        "Delete Account Permanently",
+                        style: TextStyle(
+                          color: Colors.red,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      subtitle: const Text(
+                        "This action cannot be undone",
+                        style: TextStyle(fontSize: 12, color: Colors.black45),
+                      ),
+                      trailing: const Icon(
+                        Icons.chevron_right,
+                        color: Colors.red,
+                      ),
+                      onTap: () {
+                        Navigator.pop(context); // close bottom sheet
+                        _showDeleteAccountDialog(context);
+                      },
+                    ),
+                  ],
+                ),
+              ),
+            );
+          }),
+          const _Divider(),
         ],
       ),
     );
