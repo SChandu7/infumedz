@@ -18,7 +18,6 @@ import 'thesis.dart';
 import 'library.dart';
 import "splash.dart";
 import 'package:device_preview/device_preview.dart';
-import 'dart:async';
 import 'package:app_links/app_links.dart';
 
 class ApiConfig {
@@ -45,7 +44,12 @@ Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await Firebase.initializeApp(); // ← only ONCE
+  try {
+    await Firebase.initializeApp();
+    FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
+  } catch (e) {
+    debugPrint("Firebase init skipped: $e");
+  }
 
   FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
 
@@ -269,9 +273,14 @@ class _MainShellState extends State<MainShell> {
       ),
     ];
 
-    return WillPopScope(
-      onWillPop: _onBackPressed,
-      child: Scaffold(
+    return PopScope(
+  canPop: false,
+  onPopInvokedWithResult: (didPop, _) async {
+    if (didPop) return;
+    final should = await _onBackPressed();
+    if (should && mounted) Navigator.of(context).pop();
+  },
+  child: Scaffold(
         extendBody: true,
         body: screens[index],
 
